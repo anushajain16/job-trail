@@ -1,0 +1,69 @@
+# Base config shared by every profile. All secrets/environment-specific
+# values come from env vars (with local-dev-friendly defaults) — nothing
+# sensitive is hardcoded here.
+spring:
+  application:
+    name: job-trail
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:jobtrail}
+    username: ${DB_USERNAME:jobtrail}
+    password: ${DB_PASSWORD:jobtrail}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    # Flyway migrates before Hibernate validates (wired in FlywayConfig, since
+    # Spring Boot 4's autoconfigure module dropped Flyway autoconfiguration),
+    # so it's safe to only ever validate here, never let Hibernate touch DDL.
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+---
+# Local development: verbose SQL logging, nothing else differs from base.
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+logging:
+  level:
+    com.example.anusha.job_trail: DEBUG
+
+---
+# Test profile: points at a separate database so tests never touch dev data.
+# Override via env vars in CI; these defaults assume the docker-compose db.
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:jobtrail_test}
+    username: ${DB_USERNAME:jobtrail}
+    password: ${DB_PASSWORD:jobtrail}
+  jpa:
+    hibernate:
+      ddl-auto: validate
