@@ -26,7 +26,7 @@ import java.time.Instant;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RefreshToken extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false) //Many refresh tokens can be linked to one user
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
@@ -36,7 +36,7 @@ public class RefreshToken extends BaseEntity {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    @Column(name = "revoked_at")
+    @Column(name = "revoked_at") //to check when the user logged out and the token is not valid after this
     private Instant revokedAt;
 
     public RefreshToken(User user, String tokenHash, Instant expiresAt) {

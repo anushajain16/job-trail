@@ -35,14 +35,14 @@ public class RefreshTokenService {
         this.jwtProperties = jwtProperties;
     }
 
-    @Transactional
+    @Transactional //Execute everything inside this method as one database transaction.
     public String issue(User user) {
         byte[] randomBytes = new byte[TOKEN_BYTES];
         secureRandom.nextBytes(randomBytes);
         String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
 
         Instant expiresAt = Instant.now().plus(jwtProperties.refreshTokenTtl());
-        refreshTokenRepository.save(new RefreshToken(user, hash(rawToken), expiresAt));
+        refreshTokenRepository.save(new RefreshToken(user, hash(rawToken), expiresAt)); //refresh token is hashed and then stored in database
         return rawToken;
     }
 

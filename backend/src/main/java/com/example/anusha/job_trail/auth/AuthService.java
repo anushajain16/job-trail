@@ -71,8 +71,8 @@ public class AuthService {
     }
 
     private AuthResponse issueTokens(User user) {
-        String accessToken = jwtService.issueAccessToken(user.getId(), user.getEmail());
-        String refreshToken = refreshTokenService.issue(user);
+        String accessToken = jwtService.issueAccessToken(user.getId(), user.getEmail()); //jwt token
+        String refreshToken = refreshTokenService.issue(user); //token saved for few days 
         return new AuthResponse(accessToken, refreshToken);
     }
 }
