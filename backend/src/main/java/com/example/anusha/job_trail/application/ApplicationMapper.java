@@ -19,6 +19,7 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 public interface ApplicationMapper {
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "currentStage", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     Application toEntity(ApplicationCreateRequest request, User user);
@@ -32,6 +33,7 @@ public interface ApplicationMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
+    @Mapping(target = "currentStage", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateEntityFromRequest(ApplicationUpdateRequest request, @MappingTarget Application application);

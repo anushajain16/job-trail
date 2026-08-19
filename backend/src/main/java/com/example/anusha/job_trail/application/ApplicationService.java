@@ -4,6 +4,9 @@ import com.example.anusha.job_trail.application.dto.ApplicationCreateRequest;
 import com.example.anusha.job_trail.application.dto.ApplicationResponse;
 import com.example.anusha.job_trail.application.dto.ApplicationUpdateRequest;
 import com.example.anusha.job_trail.common.exception.ResourceNotFoundException;
+import com.example.anusha.job_trail.status.Stage;
+import com.example.anusha.job_trail.status.StatusHistoryService;
+import com.example.anusha.job_trail.status.dto.StatusHistoryResponse;
 import com.example.anusha.job_trail.user.User;
 import com.example.anusha.job_trail.user.UserRepository;
 import org.springframework.data.domain.Page;
@@ -11,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -26,12 +30,14 @@ public class ApplicationService {
     private final ApplicationRepository applicationRepository;
     private final UserRepository userRepository;
     private final ApplicationMapper applicationMapper;
+    private final StatusHistoryService statusHistoryService;
 
     public ApplicationService(ApplicationRepository applicationRepository, UserRepository userRepository,
-                               ApplicationMapper applicationMapper) {
+                               ApplicationMapper applicationMapper, StatusHistoryService statusHistoryService) {
         this.applicationRepository = applicationRepository;
         this.userRepository = userRepository;
         this.applicationMapper = applicationMapper;
+        this.statusHistoryService = statusHistoryService;
     }
 
     @Transactional(readOnly = true)
@@ -52,6 +58,10 @@ public class ApplicationService {
         User userRef = userRepository.getReferenceById(userId);
         Application application = applicationMapper.toEntity(request, userRef);
         applicationRepository.save(application);
+        // The application's own "currentStage = SAVED" default is just a
+        // column value until there's a matching history row — write it now
+        // so the timeline always starts at creation, not at the first PATCH.
+        statusHistoryService.recordInitial(application);
         return applicationMapper.toResponse(application);
     }
 
@@ -65,6 +75,19 @@ public class ApplicationService {
     @Transactional
     public void delete(UUID id, UUID userId) {
         applicationRepository.delete(findOwned(id, userId));
+    }
+
+    @Transactional
+    public ApplicationResponse changeStage(UUID id, UUID userId, Stage newStage) {
+        Application application = findOwned(id, userId);
+        statusHistoryService.recordTransition(application, newStage);
+        return applicationMapper.toResponse(application);
+    }
+
+    @Transactional(readOnly = true)
+    public List<StatusHistoryResponse> getHistory(UUID id, UUID userId) {
+        Application application = findOwned(id, userId);
+        return statusHistoryService.getHistory(application.getId());
     }
 
     private Application findOwned(UUID id, UUID userId) {

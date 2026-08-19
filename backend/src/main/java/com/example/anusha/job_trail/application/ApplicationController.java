@@ -5,6 +5,8 @@ import com.example.anusha.job_trail.application.dto.ApplicationResponse;
 import com.example.anusha.job_trail.application.dto.ApplicationUpdateRequest;
 import com.example.anusha.job_trail.auth.security.AuthenticatedUser;
 import com.example.anusha.job_trail.auth.security.CurrentUser;
+import com.example.anusha.job_trail.status.dto.StageChangeRequest;
+import com.example.anusha.job_trail.status.dto.StatusHistoryResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -61,5 +64,16 @@ public class ApplicationController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@CurrentUser AuthenticatedUser currentUser, @PathVariable UUID id) {
         applicationService.delete(id, currentUser.id());
+    }
+
+    @PatchMapping("/{id}/stage")
+    public ApplicationResponse changeStage(@CurrentUser AuthenticatedUser currentUser, @PathVariable UUID id,
+                                            @Valid @RequestBody StageChangeRequest request) {
+        return applicationService.changeStage(id, currentUser.id(), request.stage());
+    }
+
+    @GetMapping("/{id}/history")
+    public List<StatusHistoryResponse> history(@CurrentUser AuthenticatedUser currentUser, @PathVariable UUID id) {
+        return applicationService.getHistory(id, currentUser.id());
     }
 }
