@@ -3,6 +3,7 @@ package com.example.anusha.job_trail.application.dto;
 import com.example.anusha.job_trail.status.Stage;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record ApplicationResponse(
@@ -15,6 +16,7 @@ public record ApplicationResponse(
         String link,
         String source,
         String notes,
+        LocalDate deadline,
         Stage currentStage,
         Instant createdAt,
         Instant updatedAt

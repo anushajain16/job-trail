@@ -18,6 +18,7 @@ import lombok.Setter;
 import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 /**
  * A single tracked job application: who it's for (company, role), where it
@@ -62,6 +63,11 @@ public class Application extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    // Optional: a posting's stated deadline, or a self-set follow-up date.
+    // The only reader today is the auto-ghost job (see the scheduler
+    // package) — it never acts on an application with no deadline set.
+    private LocalDate deadline;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "current_stage", nullable = false, length = 20)

@@ -6,6 +6,8 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.URL;
 
+import java.time.LocalDate;
+
 public record ApplicationCreateRequest(
         @NotBlank @Size(max = 255) String company,
         @NotBlank @Size(max = 255) String role,
@@ -14,7 +16,8 @@ public record ApplicationCreateRequest(
         @PositiveOrZero Integer salaryMax,
         @URL @Size(max = 2048) String link,
         @Size(max = 100) String source,
-        @Size(max = 5000) String notes
+        @Size(max = 5000) String notes,
+        LocalDate deadline
 ) {
 
     @AssertTrue(message = "salaryMin must not be greater than salaryMax")
