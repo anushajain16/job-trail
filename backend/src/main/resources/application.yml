@@ -32,6 +32,11 @@ app:
     secret: ${JWT_SECRET:dev-only-insecure-secret-change-me-before-any-real-deploy-please-32b+}
     access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
     refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:P30D}
+  scheduling:
+    auto-ghost-cron: ${AUTO_GHOST_CRON:0 0 3 * * *} #cron runs at 3AM
+    stale-after: ${AUTO_GHOST_STALE_AFTER:P14D} #14 stale days 
+    reminder-cron: ${REMINDER_CRON:0 0 9 * * *} #cron runs at 9AM
+    reminder-lookahead: ${REMINDER_LOOKAHEAD:P3D} #3 days lookahead for reminders
 
 springdoc:
   api-docs:
@@ -75,3 +80,12 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+
+# "-" is Spring's documented "never fire" cron value. Tests call the job
+# services directly to control timing exactly — a real background sweep
+# racing against test data (seeded, then asserted on) would make the suite
+# flaky for no benefit.
+app:
+  scheduling:
+    auto-ghost-cron: "-"
+    reminder-cron: "-"
