@@ -2,6 +2,7 @@ package com.example.anusha.job_trail.scheduler;
 
 import com.example.anusha.job_trail.application.Application;
 import com.example.anusha.job_trail.application.ApplicationRepository;
+import com.example.anusha.job_trail.notification.mail.EmailSender;
 import com.example.anusha.job_trail.status.Stage;
 import com.example.anusha.job_trail.status.StatusHistory;
 import com.example.anusha.job_trail.status.StatusHistoryRepository;
@@ -10,6 +11,9 @@ import com.example.anusha.job_trail.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.test.context.ActiveProfiles;
@@ -17,11 +21,14 @@ import org.springframework.test.context.ActiveProfiles;
 import java.lang.reflect.Method;
 import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,6 +46,33 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 class SchedulerIntegrationTest {
 
+    /**
+     * Swaps the real SMTP-backed {@code EmailSender} for one that just
+     * records what it was asked to send — no real mail transport needed to
+     * test the reminder claim/send/dedup flow.
+     */
+    @TestConfiguration
+    static class FakeEmailSenderConfig {
+
+        @Bean
+        @Primary
+        EmailSender fakeEmailSender() {
+            return new FakeEmailSender();
+        }
+    }
+
+    static class FakeEmailSender implements EmailSender {
+        final List<SentEmail> sent = new CopyOnWriteArrayList<>();
+
+        @Override
+        public void send(String to, String subject, String htmlBody) {
+            sent.add(new SentEmail(to, subject, htmlBody));
+        }
+    }
+
+    record SentEmail(String to, String subject, String htmlBody) {
+    }
+
     @Autowired
     private UserRepository userRepository;
 
@@ -55,6 +89,12 @@ class SchedulerIntegrationTest {
     private ReminderService reminderService;
 
     @Autowired
+    private ReminderSender reminderSender;
+
+    @Autowired
+    private ReminderLogRepository reminderLogRepository;
+
+    @Autowired
     private AutoGhostJob autoGhostJob;
 
     @Autowired
@@ -68,6 +108,32 @@ class SchedulerIntegrationTest {
 
     @Autowired
     private Clock clock;
+
+    @Autowired
+    private FakeEmailSender fakeEmailSender;
+
+    // sendReminder is @Async, so it returns before the send/claim actually
+    // finishes — poll instead of asserting immediately after the call.
+    private ReminderLog awaitReminderLog(UUID applicationId, LocalDate reminderDate) {
+        Instant deadline = Instant.now().plus(Duration.ofSeconds(5));
+        while (Instant.now().isBefore(deadline)) {
+            Optional<ReminderLog> log = reminderLogRepository.findAll().stream()
+                    .filter(l -> l.getApplication().getId().equals(applicationId)
+                            && l.getReminderDate().equals(reminderDate)
+                            && l.getStatus() != ReminderStatus.PENDING)
+                    .findFirst();
+            if (log.isPresent()) {
+                return log.get();
+            }
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        throw new AssertionError("Reminder log for application " + applicationId + " on " + reminderDate
+                + " never left PENDING within 5s");
+    }
 
     private User newUser() {
         return userRepository.saveAndFlush(new User("user-" + UUID.randomUUID() + "@jobtrail.dev", "hash"));
@@ -152,6 +218,54 @@ class SchedulerIntegrationTest {
 
         assertThat(upcoming).extracting(Application::getId).contains(dueSoon.getId());
         assertThat(upcoming).extracting(Application::getId).doesNotContain(dueLater.getId());
+    }
+
+    @Test
+    void sendReminder_emailsTheApplicationsOwnerAndRecordsItAsSent() {
+        User user = newUser();
+        Application application = seedApplication(user, Stage.APPLIED,
+                LocalDate.now(clock).plusDays(1), clock.instant());
+
+        reminderSender.sendReminder(application);
+
+        ReminderLog log = awaitReminderLog(application.getId(), LocalDate.now(clock));
+        assertThat(log.getStatus()).isEqualTo(ReminderStatus.SENT);
+        assertThat(log.getSentAt()).isNotNull();
+
+        assertThat(fakeEmailSender.sent).anySatisfy(email -> {
+            assertThat(email.to()).isEqualTo(user.getEmail());
+            assertThat(email.subject()).contains(application.getRole(), application.getCompany());
+            assertThat(email.htmlBody()).contains(application.getRole(), application.getCompany());
+        });
+    }
+
+    @Test
+    void sendReminder_neverSendsTwiceForTheSameApplicationOnTheSameDay() {
+        User user = newUser();
+        Application application = seedApplication(user, Stage.APPLIED,
+                LocalDate.now(clock).plusDays(1), clock.instant());
+
+        reminderSender.sendReminder(application);
+        awaitReminderLog(application.getId(), LocalDate.now(clock));
+        int sentAfterFirstCall = fakeEmailSender.sent.size();
+
+        // A second attempt for the same (application, day) — e.g. a retried
+        // sweep, or an app restart mid-run — must not send a second email.
+        // It fails to even claim a row, so there's no SENT/FAILED transition
+        // to poll for here — a short, fixed wait is enough for the async
+        // call to finish being rejected.
+        reminderSender.sendReminder(application);
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        List<ReminderLog> logs = reminderLogRepository.findAll().stream()
+                .filter(l -> l.getApplication().getId().equals(application.getId()))
+                .toList();
+        assertThat(logs).hasSize(1);
+        assertThat(fakeEmailSender.sent).hasSize(sentAfterFirstCall);
     }
 
     @Test

@@ -31,7 +31,11 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
                                            @Param("staleBefore") Instant staleBefore);
 
     // Finds non-terminal applications whose deadline falls between today and a future lookahead date. These applications can then be used by a reminder job.
-    @Query("SELECT a FROM Application a WHERE a.currentStage NOT IN :excludedStages "
+    // User is join-fetched: ReminderSender reads application.getUser().getEmail()
+    // asynchronously, after this method's read-only transaction has already
+    // closed, so the association must be initialized here — a lazy proxy
+    // touched outside its owning session/transaction throws instead of loading.
+    @Query("SELECT a FROM Application a JOIN FETCH a.user WHERE a.currentStage NOT IN :excludedStages "
             + "AND a.deadline IS NOT NULL AND a.deadline BETWEEN :today AND :lookaheadUntil")
     List<Application> findUpcomingDeadlines(@Param("excludedStages") Collection<Stage> excludedStages,
                                              @Param("today") LocalDate today,
