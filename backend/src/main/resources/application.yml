@@ -55,6 +55,16 @@ app:
     secret: ${JWT_SECRET:dev-only-insecure-secret-change-me-before-any-real-deploy-please-32b+}
     access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
     refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:P30D}
+  # No dev-only fallback here (unlike jwt.secret above): there's no
+  # meaningful default OAuth client id/secret, so local dev either sets its
+  # own (a free client registered against http://localhost) or simply
+  # doesn't exercise the /api/auth/oauth/** endpoints.
+  oauth:
+    google:
+      client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+    github:
+      client-id: ${GITHUB_OAUTH_CLIENT_ID:}
+      client-secret: ${GITHUB_OAUTH_CLIENT_SECRET:}
   scheduling:
     auto-ghost-cron: ${AUTO_GHOST_CRON:0 0 3 * * *} #cron runs at 3AM
     stale-after: ${AUTO_GHOST_STALE_AFTER:P14D} #14 stale days 

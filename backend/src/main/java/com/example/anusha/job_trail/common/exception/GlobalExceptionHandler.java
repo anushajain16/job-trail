@@ -2,6 +2,7 @@ package com.example.anusha.job_trail.common.exception;
 
 import com.example.anusha.job_trail.auth.exception.EmailAlreadyInUseException;
 import com.example.anusha.job_trail.auth.exception.InvalidRefreshTokenException;
+import com.example.anusha.job_trail.auth.exception.OAuthVerificationException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +12,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
@@ -44,6 +46,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(OAuthVerificationException.class)
+    public ResponseEntity<ErrorResponse> handleOAuthVerification(OAuthVerificationException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    }
+
     /**
      * Covers auth failures raised inside a controller method (e.g.
      * AuthService.login's BadCredentialsException). A missing/invalid
@@ -61,6 +68,14 @@ public class GlobalExceptionHandler {
                 .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         return build(HttpStatus.BAD_REQUEST, message.isBlank() ? "Validation failed" : message, request);
+    }
+
+    // Catches, among others, an unsupported {provider} on
+    // POST /api/auth/oauth/{provider} — Spring's converter fails turning it
+    // into an AuthProvider before the controller method is even invoked.
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, "Invalid value for '" + ex.getName() + "'", request);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

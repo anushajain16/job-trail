@@ -25,7 +25,10 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    // Nullable: a user who only ever signed in via Google/GitHub has no
+    // local password. Set the first time they sign up with one, or (not
+    // built yet) if they later add a password to an OAuth-only account.
+    @Column(name = "password_hash")
     private String passwordHash;
 
     public User(String email, String passwordHash) {

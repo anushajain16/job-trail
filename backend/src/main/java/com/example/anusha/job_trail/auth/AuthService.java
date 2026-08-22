@@ -53,7 +53,10 @@ public class AuthService {
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new BadCredentialsException(INVALID_CREDENTIALS_MESSAGE));
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        // An OAuth-only account (signed up via Google/GitHub, never set a
+        // local password) has no hash to match against — reject rather than
+        // pass null into the encoder, which throws IllegalArgumentException.
+        if (user.getPasswordHash() == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new BadCredentialsException(INVALID_CREDENTIALS_MESSAGE);
         }
         return issueTokens(user);
