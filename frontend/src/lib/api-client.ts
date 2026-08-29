@@ -7,6 +7,8 @@
  * `VITE_API_BASE_URL` only needs setting for a split-origin deploy.
  */
 
+import { clearSession, getAccessToken, getStoredRefreshToken, setSession } from '@/lib/auth-tokens'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export class ApiError extends Error {
@@ -55,4 +57,69 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   }
 
   return data as T
+}
+
+// Concurrent 401s (e.g. several queries firing on a stale access token at
+// once) share one refresh call instead of racing the backend's
+// refresh-token rotation (RefreshTokenService.verifyAndRevoke revokes the
+// token it's given, on every call) — the second racer would otherwise
+// present an already-revoked token and fail.
+let refreshInFlight: Promise<string | null> | null = null
+
+function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = getStoredRefreshToken()
+  if (!refreshToken) {
+    return Promise.resolve(null)
+  }
+
+  refreshInFlight ??= apiFetch<{ accessToken: string; refreshToken: string }>('/api/auth/refresh', {
+    method: 'POST',
+    body: { refreshToken },
+  })
+    .then((tokens) => {
+      setSession(tokens)
+      return tokens.accessToken
+    })
+    .catch(() => {
+      // The refresh token itself is bad (expired, already rotated,
+      // revoked) — there's no session to recover. clearSession() notifies
+      // AuthProvider via onSessionCleared so it can redirect to /login.
+      clearSession()
+      return null
+    })
+    .finally(() => {
+      refreshInFlight = null
+    })
+
+  return refreshInFlight
+}
+
+/**
+ * {@link apiFetch}, plus: attaches the current access token as a bearer
+ * header, and on a 401 tries exactly one silent refresh-and-retry before
+ * giving up. Every call to an authenticated endpoint (anything but
+ * `/api/auth/signup|login|refresh` and `/actuator/**`) should go through
+ * this, not `apiFetch` directly.
+ */
+export async function authFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  const attempt = (token: string | null) =>
+    apiFetch<T>(path, {
+      ...options,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    })
+
+  try {
+    return await attempt(getAccessToken())
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      const refreshedToken = await refreshAccessToken()
+      if (refreshedToken) {
+        return attempt(refreshedToken)
+      }
+    }
+    throw error
+  }
 }

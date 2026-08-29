@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { BackendStatusBadge } from '@/components/layout/backend-status-badge'
+import { UserMenu } from '@/components/layout/user-menu'
 import { cn } from '@/lib/utils'
 
 const NAV_LINKS = [{ to: '/', label: 'Dashboard' }]
@@ -32,7 +33,10 @@ export function AppLayout() {
               ))}
             </nav>
           </div>
-          <BackendStatusBadge />
+          <div className="flex items-center gap-4">
+            <BackendStatusBadge />
+            <UserMenu />
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-6 py-8">
