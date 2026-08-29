@@ -1,0 +1,36 @@
+name: ML Service CI
+
+on:
+  push:
+    paths:
+      - "ml-service/**"
+      - ".github/workflows/ml-service-ci.yml"
+  pull_request:
+    paths:
+      - "ml-service/**"
+      - ".github/workflows/ml-service-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: ml-service/pyproject.toml
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      # No OPENAI_API_KEY, no model download: tests/conftest.py forces the
+      # hashing embedding backend and the stub LLM client, so this needs
+      # nothing but the pip install above.
+      - name: Run tests
+        run: pytest -v
