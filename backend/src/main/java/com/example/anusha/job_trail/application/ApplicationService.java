@@ -4,6 +4,9 @@ import com.example.anusha.job_trail.application.dto.ApplicationCreateRequest;
 import com.example.anusha.job_trail.application.dto.ApplicationResponse;
 import com.example.anusha.job_trail.application.dto.ApplicationUpdateRequest;
 import com.example.anusha.job_trail.common.exception.ResourceNotFoundException;
+import com.example.anusha.job_trail.document.Document;
+import com.example.anusha.job_trail.document.DocumentRepository;
+import com.example.anusha.job_trail.document.DocumentType;
 import com.example.anusha.job_trail.status.Stage;
 import com.example.anusha.job_trail.status.StatusHistoryService;
 import com.example.anusha.job_trail.status.dto.StatusHistoryResponse;
@@ -31,13 +34,16 @@ public class ApplicationService {
     private final UserRepository userRepository;
     private final ApplicationMapper applicationMapper;
     private final StatusHistoryService statusHistoryService;
+    private final DocumentRepository documentRepository;
 
     public ApplicationService(ApplicationRepository applicationRepository, UserRepository userRepository,
-                               ApplicationMapper applicationMapper, StatusHistoryService statusHistoryService) {
+                               ApplicationMapper applicationMapper, StatusHistoryService statusHistoryService,
+                               DocumentRepository documentRepository) {
         this.applicationRepository = applicationRepository;
         this.userRepository = userRepository;
         this.applicationMapper = applicationMapper;
         this.statusHistoryService = statusHistoryService;
+        this.documentRepository = documentRepository;
     }
 
     @Transactional(readOnly = true)
@@ -69,6 +75,12 @@ public class ApplicationService {
     public ApplicationResponse update(UUID id, UUID userId, ApplicationUpdateRequest request) {
         Application application = findOwned(id, userId);
         applicationMapper.updateEntityFromRequest(request, application);
+        if (request.resumeVersionId() != null) {
+            application.setResumeVersion(resolveDocument(request.resumeVersionId(), userId, DocumentType.RESUME));
+        }
+        if (request.coverLetterVersionId() != null) {
+            application.setCoverLetterVersion(resolveDocument(request.coverLetterVersionId(), userId, DocumentType.COVER_LETTER));
+        }
         return applicationMapper.toResponse(application);
     }
 
@@ -93,5 +105,16 @@ public class ApplicationService {
     private Application findOwned(UUID id, UUID userId) {
         return applicationRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found: " + id));
+    }
+
+    // Same ownership-scoped lookup as findOwned, plus a type check: a
+    // resume version id can't be attached as a cover letter, or vice versa.
+    private Document resolveDocument(UUID documentId, UUID userId, DocumentType expectedType) {
+        Document document = documentRepository.findByIdAndUserId(documentId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found: " + documentId));
+        if (document.getType() != expectedType) {
+            throw new IllegalArgumentException("Document " + documentId + " is not a " + expectedType + " version");
+        }
+        return document;
     }
 }

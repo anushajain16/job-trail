@@ -2,6 +2,7 @@ package com.example.anusha.job_trail.analytics;
 
 import com.example.anusha.job_trail.analytics.dto.ConversionResponse;
 import com.example.anusha.job_trail.analytics.dto.FunnelResponse;
+import com.example.anusha.job_trail.analytics.dto.ResumePerformanceResponse;
 import com.example.anusha.job_trail.analytics.dto.TimeInStageResponse;
 import com.example.anusha.job_trail.auth.security.AuthenticatedUser;
 import com.example.anusha.job_trail.auth.security.CurrentUser;
@@ -32,5 +33,10 @@ public class AnalyticsController {
     @GetMapping("/time-in-stage")
     public TimeInStageResponse timeInStage(@CurrentUser AuthenticatedUser currentUser) {
         return analyticsService.timeInStage(currentUser.id());
+    }
+
+    @GetMapping("/resume-performance")
+    public ResumePerformanceResponse resumePerformance(@CurrentUser AuthenticatedUser currentUser) {
+        return analyticsService.resumePerformance(currentUser.id());
     }
 }

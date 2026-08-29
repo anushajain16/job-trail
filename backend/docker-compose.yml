@@ -45,5 +45,43 @@ services:
     depends_on:
       - db
 
+  # Local SMTP catch-all: the app's default MAIL_HOST/MAIL_PORT
+  # (localhost:1025, no auth) point straight at this. Every reminder email
+  # sent locally lands here instead of a real inbox — browse them at
+  # http://localhost:8025. Never used outside local dev: a deploy overrides
+  # MAIL_* to point at a real relay instead (see .env.example).
+  mailpit:
+    image: axllent/mailpit
+    container_name: job-trail-mailpit
+    restart: unless-stopped
+    ports:
+      - "${MAIL_PORT:-1025}:1025"
+      - "8025:8025"
+
+  # Object storage for resume/cover-letter document versions
+  # (DocumentStorage's MinIO implementation talks to this). S3-API-compatible,
+  # so nothing in the app needs to change if a real deploy points at AWS S3
+  # instead — just app.documents.storage.endpoint. Console at
+  # http://localhost:9001 (login with the root user/password below).
+  minio:
+    image: minio/minio
+    container_name: job-trail-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-jobtrail}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-jobtrail123}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - job-trail-minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   job-trail-db-data:
+  job-trail-minio-data:

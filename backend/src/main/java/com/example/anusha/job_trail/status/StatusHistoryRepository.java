@@ -19,10 +19,12 @@ public interface StatusHistoryRepository extends JpaRepository<StatusHistory, UU
     // Backs the analytics feature: every row for every application the user
     // owns, ordered so a single pass (grouped by application, chronological
     // within it) is enough to derive funnel/conversion/time-in-stage without
-    // a second query per application. The application is fetched eagerly —
-    // analytics needs its id and source on every row, and it's LAZY by
-    // default — so this doesn't turn into an N+1 as the result set is walked.
-    @Query("SELECT sh FROM StatusHistory sh JOIN FETCH sh.application a "
+    // a second query per application. The application (and its resume
+    // version, for resume-performance) is fetched eagerly — analytics reads
+    // application.id, .source, and .resumeVersion on every row, and all are
+    // LAZY by default — so this doesn't turn into an N+1 as the result set
+    // is walked.
+    @Query("SELECT sh FROM StatusHistory sh JOIN FETCH sh.application a LEFT JOIN FETCH a.resumeVersion "
             + "WHERE a.user.id = :userId ORDER BY a.id ASC, sh.createdAt ASC")
     List<StatusHistory> findAllForUserOrderedByApplicationAndTime(@Param("userId") UUID userId);
 }

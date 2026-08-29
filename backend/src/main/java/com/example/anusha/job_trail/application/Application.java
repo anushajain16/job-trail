@@ -1,6 +1,7 @@
 package com.example.anusha.job_trail.application;
 
 import com.example.anusha.job_trail.common.persistence.BaseEntity;
+import com.example.anusha.job_trail.document.Document;
 import com.example.anusha.job_trail.status.Stage;
 import com.example.anusha.job_trail.user.User;
 import jakarta.persistence.Column;
@@ -68,6 +69,21 @@ public class Application extends BaseEntity {
     // The only reader today is the auto-ghost job (see the scheduler
     // package) — it never acts on an application with no deadline set.
     private LocalDate deadline;
+
+    // Which named resume/cover-letter version was actually sent for this
+    // application, if any. Pinned by id, not "the user's latest resume" —
+    // that's what lets resume-performance analytics attribute a response
+    // (or its absence) to the exact version that went out, even after the
+    // user has since uploaded newer ones. Set via
+    // ApplicationService.update, which also enforces that the referenced
+    // document belongs to this user and is the right DocumentType.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "resume_version_id")
+    private Document resumeVersion;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cover_letter_version_id")
+    private Document coverLetterVersion;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "current_stage", nullable = false, length = 20)

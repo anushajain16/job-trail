@@ -2,12 +2,17 @@ package com.example.anusha.job_trail.analytics;
 
 import com.example.anusha.job_trail.analytics.dto.ConversionResponse;
 import com.example.anusha.job_trail.analytics.dto.FunnelResponse;
+import com.example.anusha.job_trail.analytics.dto.ResumePerformanceResponse;
+import com.example.anusha.job_trail.analytics.dto.ResumeVersionPerformance;
 import com.example.anusha.job_trail.analytics.dto.SourceResponseRate;
 import com.example.anusha.job_trail.analytics.dto.StageConversion;
 import com.example.anusha.job_trail.analytics.dto.StageDuration;
 import com.example.anusha.job_trail.analytics.dto.TimeInStageResponse;
 import com.example.anusha.job_trail.application.Application;
 import com.example.anusha.job_trail.application.ApplicationRepository;
+import com.example.anusha.job_trail.document.Document;
+import com.example.anusha.job_trail.document.DocumentRepository;
+import com.example.anusha.job_trail.document.DocumentType;
 import com.example.anusha.job_trail.status.Stage;
 import com.example.anusha.job_trail.status.StatusHistory;
 import com.example.anusha.job_trail.status.StatusHistoryRepository;
@@ -56,6 +61,9 @@ class AnalyticsServiceIntegrationTest {
     private StatusHistoryRepository statusHistoryRepository;
 
     @Autowired
+    private DocumentRepository documentRepository;
+
+    @Autowired
     private AnalyticsService analyticsService;
 
     @Autowired
@@ -71,6 +79,11 @@ class AnalyticsServiceIntegrationTest {
         Application application = new Application(user, "Company", "Role");
         application.setSource(source);
         return applicationRepository.saveAndFlush(application);
+    }
+
+    private Document newResumeVersion(User user, String label) {
+        return documentRepository.saveAndFlush(new Document(user, DocumentType.RESUME, label,
+                "key-" + UUID.randomUUID(), "resume.pdf", "application/pdf", 1024L));
     }
 
     // Writes one history row and backdates its changed_at to T0 + dayOffset.
@@ -158,6 +171,76 @@ class AnalyticsServiceIntegrationTest {
         assertDuration(timeInStage.stages(), Stage.SCREEN, 3.5, 2);
         assertDuration(timeInStage.stages(), Stage.INTERVIEW, 2.0, 1);
         assertDuration(timeInStage.stages(), Stage.FINAL, 1.0, 1);
+    }
+
+    /**
+     * Three resume versions (A, B, and an unused C) attached across four
+     * applications, one of which sends no resume version at all:
+     * <ul>
+     *   <li>App1 (resume A): SAVED -> APPLIED -> SCREEN -> REJECTED — responded.</li>
+     *   <li>App2 (resume A): SAVED -> APPLIED -> GHOSTED — never responded.</li>
+     *   <li>App3 (resume B): full funnel to OFFER — responded.</li>
+     *   <li>App4 (no resume version): SAVED -> APPLIED — excluded entirely,
+     *       it can't be attributed to any version.</li>
+     * </ul>
+     * Expected: A = 1/2 (0.5), B = 1/1 (1.0), C = 0/0 (0.0, still listed).
+     */
+    @Test
+    void resumePerformance_matchesHandComputedRatesAndExcludesUnlinkedApplications() {
+        User user = newUser();
+        Document resumeA = newResumeVersion(user, "Resume A");
+        Document resumeB = newResumeVersion(user, "Resume B");
+        Document resumeC = newResumeVersion(user, "Resume C");
+
+        Application app1 = newApplication(user, "LinkedIn");
+        app1.setResumeVersion(resumeA);
+        applicationRepository.saveAndFlush(app1);
+        recordAt(app1, Stage.SAVED, 0);
+        recordAt(app1, Stage.APPLIED, 1);
+        recordAt(app1, Stage.SCREEN, 3);
+        recordAt(app1, Stage.REJECTED, 7);
+
+        Application app2 = newApplication(user, "LinkedIn");
+        app2.setResumeVersion(resumeA);
+        applicationRepository.saveAndFlush(app2);
+        recordAt(app2, Stage.SAVED, 0);
+        recordAt(app2, Stage.APPLIED, 2);
+        recordAt(app2, Stage.GHOSTED, 9);
+
+        Application app3 = newApplication(user, "Referral");
+        app3.setResumeVersion(resumeB);
+        applicationRepository.saveAndFlush(app3);
+        recordAt(app3, Stage.SAVED, 0);
+        recordAt(app3, Stage.APPLIED, 1);
+        recordAt(app3, Stage.SCREEN, 3);
+        recordAt(app3, Stage.INTERVIEW, 6);
+        recordAt(app3, Stage.FINAL, 8);
+        recordAt(app3, Stage.OFFER, 9);
+
+        Application app4 = newApplication(user, "Referral");
+        recordAt(app4, Stage.SAVED, 0);
+        recordAt(app4, Stage.APPLIED, 1);
+
+        ResumePerformanceResponse response = analyticsService.resumePerformance(user.getId());
+        Map<String, ResumeVersionPerformance> byLabel = response.versions().stream()
+                .collect(Collectors.toMap(ResumeVersionPerformance::label, v -> v));
+
+        assertThat(byLabel).containsKeys("Resume A", "Resume B", "Resume C");
+
+        ResumeVersionPerformance a = byLabel.get("Resume A");
+        assertThat(a.totalApplications()).isEqualTo(2);
+        assertThat(a.respondedApplications()).isEqualTo(1);
+        assertThat(a.responseRate()).isCloseTo(0.5, within(1e-9));
+
+        ResumeVersionPerformance b = byLabel.get("Resume B");
+        assertThat(b.totalApplications()).isEqualTo(1);
+        assertThat(b.respondedApplications()).isEqualTo(1);
+        assertThat(b.responseRate()).isCloseTo(1.0, within(1e-9));
+
+        ResumeVersionPerformance c = byLabel.get("Resume C");
+        assertThat(c.totalApplications()).isEqualTo(0);
+        assertThat(c.respondedApplications()).isEqualTo(0);
+        assertThat(c.responseRate()).isCloseTo(0.0, within(1e-9));
     }
 
     private static double rateFor(List<StageConversion> conversions, Stage from, Stage to) {

@@ -3,10 +3,15 @@ package com.example.anusha.job_trail.analytics;
 import com.example.anusha.job_trail.analytics.dto.ConversionResponse;
 import com.example.anusha.job_trail.analytics.dto.FunnelResponse;
 import com.example.anusha.job_trail.analytics.dto.FunnelStageCount;
+import com.example.anusha.job_trail.analytics.dto.ResumePerformanceResponse;
+import com.example.anusha.job_trail.analytics.dto.ResumeVersionPerformance;
 import com.example.anusha.job_trail.analytics.dto.SourceResponseRate;
 import com.example.anusha.job_trail.analytics.dto.StageConversion;
 import com.example.anusha.job_trail.analytics.dto.StageDuration;
 import com.example.anusha.job_trail.analytics.dto.TimeInStageResponse;
+import com.example.anusha.job_trail.document.Document;
+import com.example.anusha.job_trail.document.DocumentRepository;
+import com.example.anusha.job_trail.document.DocumentType;
 import com.example.anusha.job_trail.status.Stage;
 import com.example.anusha.job_trail.status.StatusHistory;
 import com.example.anusha.job_trail.status.StatusHistoryRepository;
@@ -52,9 +57,11 @@ public class AnalyticsService {
     private static final String UNKNOWN_SOURCE = "Unknown";
 
     private final StatusHistoryRepository statusHistoryRepository;
+    private final DocumentRepository documentRepository;
 
-    public AnalyticsService(StatusHistoryRepository statusHistoryRepository) {
+    public AnalyticsService(StatusHistoryRepository statusHistoryRepository, DocumentRepository documentRepository) {
         this.statusHistoryRepository = statusHistoryRepository;
+        this.documentRepository = documentRepository;
     }
 
     @Transactional(readOnly = true)
@@ -110,6 +117,50 @@ public class AnalyticsService {
                 .toList();
 
         return new TimeInStageResponse(stages);
+    }
+
+    @Transactional(readOnly = true)
+    public ResumePerformanceResponse resumePerformance(UUID userId) {
+        List<StatusHistory> history = statusHistoryRepository.findAllForUserOrderedByApplicationAndTime(userId);
+        Map<UUID, Set<Stage>> stagesReachedByApplication = groupStagesReachedByApplication(history);
+
+        // One resume version id per application (its currentStage row's
+        // application.resumeVersion; the same for every row of that
+        // application, so first-seen is fine), null when none is attached —
+        // those applications are excluded below rather than folded into an
+        // "Unknown" bucket, since they can't be attributed to any version.
+        Map<UUID, UUID> resumeVersionIdByApplication = new LinkedHashMap<>();
+        for (StatusHistory row : history) {
+            resumeVersionIdByApplication.computeIfAbsent(row.getApplication().getId(),
+                    applicationId -> row.getApplication().getResumeVersion() == null
+                            ? null : row.getApplication().getResumeVersion().getId());
+        }
+
+        // [total, responded] per resume version id.
+        Map<UUID, long[]> countsByVersion = new LinkedHashMap<>();
+        for (Map.Entry<UUID, Set<Stage>> entry : stagesReachedByApplication.entrySet()) {
+            UUID versionId = resumeVersionIdByApplication.get(entry.getKey());
+            if (versionId == null) {
+                continue;
+            }
+            long[] counts = countsByVersion.computeIfAbsent(versionId, id -> new long[2]);
+            counts[0]++;
+            if (entry.getValue().stream().anyMatch(RESPONSE_STAGES::contains)) {
+                counts[1]++;
+            }
+        }
+
+        List<Document> resumeVersions = documentRepository.findByUserIdAndTypeOrderByCreatedAtDesc(userId, DocumentType.RESUME);
+        List<ResumeVersionPerformance> versions = resumeVersions.stream()
+                .map(document -> {
+                    long[] counts = countsByVersion.getOrDefault(document.getId(), new long[2]);
+                    return new ResumeVersionPerformance(document.getId(), document.getLabel(), counts[0], counts[1],
+                            rate(counts[1], counts[0]));
+                })
+                .sorted(Comparator.comparing(ResumeVersionPerformance::responseRate).reversed())
+                .toList();
+
+        return new ResumePerformanceResponse(versions);
     }
 
     private List<SourceResponseRate> responseRateBySource(List<StatusHistory> history,

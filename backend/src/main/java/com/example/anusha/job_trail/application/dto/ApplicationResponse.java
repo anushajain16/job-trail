@@ -18,6 +18,8 @@ public record ApplicationResponse(
         String notes,
         LocalDate deadline,
         Stage currentStage,
+        UUID resumeVersionId,
+        UUID coverLetterVersionId,
         Instant createdAt,
         Instant updatedAt
 ) {

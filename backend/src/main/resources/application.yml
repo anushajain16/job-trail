@@ -43,6 +43,15 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
+  servlet:
+    multipart:
+      # Set a little above app.documents.max-size-bytes below: the app's own
+      # check is what should produce the friendly 413 for an oversized
+      # resume/cover-letter upload, not Spring's multipart parser rejecting
+      # the request first with a less specific error.
+      max-file-size: ${DOCUMENT_UPLOAD_MAX_FILE_SIZE:15MB}
+      max-request-size: ${DOCUMENT_UPLOAD_MAX_REQUEST_SIZE:15MB}
+
 server:
   port: ${SERVER_PORT:8080}
 
@@ -67,9 +76,20 @@ app:
       client-secret: ${GITHUB_OAUTH_CLIENT_SECRET:}
   scheduling:
     auto-ghost-cron: ${AUTO_GHOST_CRON:0 0 3 * * *} #cron runs at 3AM
-    stale-after: ${AUTO_GHOST_STALE_AFTER:P14D} #14 stale days 
+    stale-after: ${AUTO_GHOST_STALE_AFTER:P14D} #14 stale days
     reminder-cron: ${REMINDER_CRON:0 0 9 * * *} #cron runs at 9AM
     reminder-lookahead: ${REMINDER_LOOKAHEAD:P3D} #3 days lookahead for reminders
+  documents:
+    max-size-bytes: ${DOCUMENT_MAX_SIZE_BYTES:10485760} # 10MB
+    storage:
+      # MinIO's local dev default root credentials/port (see docker-compose.yml's
+      # minio service) — never used outside local dev, same as the mail/DB
+      # defaults above.
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:jobtrail}
+      secret-key: ${MINIO_SECRET_KEY:jobtrail123}
+      bucket: ${MINIO_BUCKET:job-trail-documents}
+      presigned-url-ttl: ${MINIO_PRESIGNED_URL_TTL:PT10M}
 
 springdoc:
   api-docs:

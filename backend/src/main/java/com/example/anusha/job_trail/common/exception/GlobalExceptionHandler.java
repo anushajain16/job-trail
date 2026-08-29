@@ -3,6 +3,8 @@ package com.example.anusha.job_trail.common.exception;
 import com.example.anusha.job_trail.auth.exception.EmailAlreadyInUseException;
 import com.example.anusha.job_trail.auth.exception.InvalidRefreshTokenException;
 import com.example.anusha.job_trail.auth.exception.OAuthVerificationException;
+import com.example.anusha.job_trail.document.exception.DocumentTooLargeException;
+import com.example.anusha.job_trail.document.exception.UnsupportedDocumentTypeException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
@@ -60,6 +63,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex, HttpServletRequest request) {
         return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(UnsupportedDocumentTypeException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedDocumentType(UnsupportedDocumentTypeException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    // Covers both this app's own size check (once the file is already read
+    // into a MultipartFile) and Spring's own multipart size limit
+    // (spring.servlet.multipart.max-file-size) rejecting the request before
+    // a DocumentService method is even reached.
+    @ExceptionHandler({DocumentTooLargeException.class, MaxUploadSizeExceededException.class})
+    public ResponseEntity<ErrorResponse> handleDocumentTooLarge(Exception ex, HttpServletRequest request) {
+        return build(HttpStatus.PAYLOAD_TOO_LARGE, ex.getMessage(), request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
