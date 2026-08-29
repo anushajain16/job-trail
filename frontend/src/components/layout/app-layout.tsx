@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/map', label: 'Map', end: false },
   { to: '/applications', label: 'Applications', end: false },
+  { to: '/analytics', label: 'Analytics', end: false },
 ]
 
 /** Shell every route renders inside: header (brand, nav, backend status)

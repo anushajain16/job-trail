@@ -93,6 +93,14 @@
     --subway-rejected: #d03b3b;
     --subway-ghosted: #898781;
     --subway-track-remaining: #e1e0d9;
+
+    /* Analytics dashboard (src/features/analytics) — every chart there is
+     * one series (a count/rate by category), so this is the dataviz
+     * skill's "sequential is the safe default" case: one hue throughout,
+     * the same blue as the subway map's "active" status for one visual
+     * identity across the app, not shared as a variable since the two
+     * features are otherwise unrelated. */
+    --analytics-primary: #2a78d6;
 }
 
 .dark {
@@ -136,6 +144,8 @@
     --subway-rejected: #d03b3b;
     --subway-ghosted: #898781;
     --subway-track-remaining: #2c2c2a;
+
+    --analytics-primary: #3987e5;
 }
 
 @layer base {
