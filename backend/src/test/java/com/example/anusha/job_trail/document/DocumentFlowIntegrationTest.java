@@ -7,13 +7,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.MinIOContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -28,9 +23,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * End-to-end against the real app context, a real Postgres started by Testcontainers
- * (see AbstractIntegrationTest), and a real MinIO server started in a
- * Testcontainer — the one test in this feature that exercises
+ * End-to-end against the real app context, a real Postgres, and a real MinIO
+ * server, both started by Testcontainers (see AbstractIntegrationTest) — the
+ * one test in this feature that exercises
  * {@link com.example.anusha.job_trail.document.storage.MinioDocumentStorage}
  * itself rather than a mock. Covers the actual upload/download round trip
  * and the auth-boundary requirement: one user's documents must be
@@ -38,19 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
 class DocumentFlowIntegrationTest extends AbstractIntegrationTest {
-
-    @Container
-    static MinIOContainer minio = new MinIOContainer("minio/minio:latest");
-
-    @DynamicPropertySource
-    static void minioProperties(DynamicPropertyRegistry registry) {
-        registry.add("app.documents.storage.endpoint", minio::getS3URL);
-        registry.add("app.documents.storage.access-key", minio::getUserName);
-        registry.add("app.documents.storage.secret-key", minio::getPassword);
-        registry.add("app.documents.storage.bucket", () -> "job-trail-documents-test");
-    }
 
     @Autowired
     private MockMvc mockMvc;
