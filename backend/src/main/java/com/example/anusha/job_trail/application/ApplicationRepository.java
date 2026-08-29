@@ -23,6 +23,12 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
 
     Optional<Application> findByIdAndUserId(UUID id, UUID userId);
 
+    // The CSV export's one query: pagination deliberately bypassed (the
+    // whole point of an export is "give me everything"), same ordering as
+    // the paginated list's default so the export reads the way the list
+    // page does.
+    List<Application> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
     //Finds potential ghosted applications: must not be in an excluded/terminal stage, must have a deadline, the deadline must have passed, and the application must not have been updated recently
     @Query("SELECT a FROM Application a WHERE a.currentStage NOT IN :excludedStages "
             + "AND a.deadline IS NOT NULL AND a.deadline < :today AND a.updatedAt < :staleBefore")

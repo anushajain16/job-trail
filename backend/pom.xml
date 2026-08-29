@@ -64,6 +64,15 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 		<dependency>
+			<!-- CSV writing for the /export endpoints — CSVPrinter handles
+			     quoting/escaping (embedded commas, quotes, newlines in notes
+			     and reflections) so nothing here hand-rolls it. Not managed by
+			     spring-boot-starter-parent, hence the explicit version. -->
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-csv</artifactId>
+			<version>1.12.0</version>
+		</dependency>
+		<dependency>
 			<!-- JavaMailSender talks plain SMTP, so swapping the actual provider
 			     (a local dev catch-all, SES, SendGrid's SMTP relay, ...) is just
 			     a config change — nothing in the app depends on a vendor SDK. -->

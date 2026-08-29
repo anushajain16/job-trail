@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ExportCsvButton } from '@/components/export-csv-button'
 import { DeleteApplicationDialog } from '@/features/applications/delete-application-dialog'
 import { useApplicationsQuery } from '@/features/applications/hooks'
 import { STAGE_LABELS, type Application } from '@/features/applications/types'
@@ -35,7 +36,11 @@ export function ApplicationsListPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Applications</h1>
           <p className="text-muted-foreground">Everything you're tracking, newest first.</p>
         </div>
-        <Button render={<Link to="/applications/new" />}>New application</Button>
+        <div className="flex gap-2">
+          <ExportCsvButton path="/api/interviews/export" label="Export interview rounds" pendingLabel="Exporting…" />
+          <ExportCsvButton path="/api/applications/export" label="Export CSV" pendingLabel="Exporting…" />
+          <Button render={<Link to="/applications/new" />}>New application</Button>
+        </div>
       </div>
 
       <Card>

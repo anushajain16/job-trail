@@ -5,6 +5,7 @@ import com.example.anusha.job_trail.auth.security.CurrentUser;
 import com.example.anusha.job_trail.interview.dto.InterviewRoundCreateRequest;
 import com.example.anusha.job_trail.interview.dto.InterviewRoundResponse;
 import com.example.anusha.job_trail.interview.dto.InterviewRoundUpdateRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,9 +33,20 @@ import java.util.UUID;
 public class InterviewRoundController {
 
     private final InterviewRoundService interviewRoundService;
+    private final InterviewRoundExportService interviewRoundExportService;
 
-    public InterviewRoundController(InterviewRoundService interviewRoundService) {
+    public InterviewRoundController(InterviewRoundService interviewRoundService,
+                                     InterviewRoundExportService interviewRoundExportService) {
         this.interviewRoundService = interviewRoundService;
+        this.interviewRoundExportService = interviewRoundExportService;
+    }
+
+    // A literal path — no {id} sibling on this controller to conflict
+    // with. Every round across every application the caller owns, as a
+    // downloadable CSV.
+    @GetMapping("/api/interviews/export")
+    public void export(@CurrentUser AuthenticatedUser currentUser, HttpServletResponse response) {
+        interviewRoundExportService.export(currentUser.id(), response);
     }
 
     @GetMapping("/api/applications/{applicationId}/interviews")

@@ -123,3 +123,44 @@ export async function authFetch<T>(path: string, options: ApiRequestOptions = {}
     throw error
   }
 }
+
+/**
+ * Same auth/retry shape as {@link authFetch}, but for an endpoint whose
+ * response body is a file, not JSON (e.g. a CSV export) — a plain `<a
+ * href>` can't carry the bearer token, so downloading one has to go
+ * through fetch. Returns the raw blob plus the filename the backend chose
+ * (from Content-Disposition), for the caller to hand to the browser.
+ */
+export async function authFetchFile(path: string): Promise<{ blob: Blob; filename: string }> {
+  const attempt = async (token: string | null) => {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!response.ok) {
+      const text = await response.text()
+      const data = text ? JSON.parse(text) : null
+      const message = (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string')
+        ? data.message
+        : response.statusText
+      throw new ApiError(message, response.status, path)
+    }
+    return response
+  }
+
+  let response: Response
+  try {
+    response = await attempt(getAccessToken())
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      const refreshedToken = await refreshAccessToken()
+      if (!refreshedToken) throw error
+      response = await attempt(refreshedToken)
+    } else {
+      throw error
+    }
+  }
+
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'export.csv'
+  return { blob: await response.blob(), filename }
+}

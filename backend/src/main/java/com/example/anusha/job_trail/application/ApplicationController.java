@@ -9,6 +9,7 @@ import com.example.anusha.job_trail.matching.MatchScoringService;
 import com.example.anusha.job_trail.matching.dto.MatchScoreResponse;
 import com.example.anusha.job_trail.status.dto.StageChangeRequest;
 import com.example.anusha.job_trail.status.dto.StatusHistoryResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,10 +35,13 @@ public class ApplicationController {
 
     private final ApplicationService applicationService;
     private final MatchScoringService matchScoringService;
+    private final ApplicationExportService applicationExportService;
 
-    public ApplicationController(ApplicationService applicationService, MatchScoringService matchScoringService) {
+    public ApplicationController(ApplicationService applicationService, MatchScoringService matchScoringService,
+                                  ApplicationExportService applicationExportService) {
         this.applicationService = applicationService;
         this.matchScoringService = matchScoringService;
+        this.applicationExportService = applicationExportService;
     }
 
     @GetMapping
@@ -49,6 +53,14 @@ public class ApplicationController {
     @GetMapping("/{id}")
     public ApplicationResponse get(@CurrentUser AuthenticatedUser currentUser, @PathVariable UUID id) {
         return applicationService.get(id, currentUser.id());
+    }
+
+    // A literal path, matched ahead of GET /{id} — every application the
+    // caller owns, pagination bypassed, as a downloadable CSV. See
+    // ApplicationExportService for the column mapping.
+    @GetMapping("/export")
+    public void export(@CurrentUser AuthenticatedUser currentUser, HttpServletResponse response) {
+        applicationExportService.export(currentUser.id(), response);
     }
 
     @PostMapping
