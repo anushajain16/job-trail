@@ -10,6 +10,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { STAGE_LABELS, type Application } from '@/features/applications/types'
+import { InterviewRoundsSection } from '@/features/interviews/interview-rounds-section'
 import { MatchScoreBadge } from '@/features/matching/match-score-badge'
 import type { HistoryEntry } from '@/features/subway-map/api'
 import { STATUS_LABELS, categorizeStage } from '@/features/subway-map/layout'
@@ -99,6 +100,10 @@ export function ApplicationDetailSheet({ application, history, onOpenChange }: A
                 </div>
               )}
             </div>
+
+            <Separator />
+
+            <InterviewRoundsSection applicationId={application.id} />
 
             <Separator />
 
