@@ -14,6 +14,13 @@ the internal Docker network, and every request is fully self-contained.
 
 Interactive docs (Swagger UI) at `/docs` once the service is running.
 
+`/parse` and `/match` check the `X-Internal-Api-Key` header against
+`MLSVC_INTERNAL_API_KEY` when that's set (unset by default — see
+`.env.example`); `/health` never does, since it must stay reachable for a
+liveness probe with no credentials of its own. This is defense in depth,
+not the real boundary: the real boundary is that this service is reachable
+only from Spring Boot over the internal Docker network, never a public one.
+
 ## Graceful degradation, by design
 
 Neither endpoint requires external credentials to run:

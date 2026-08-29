@@ -82,6 +82,30 @@ services:
       timeout: 5s
       retries: 10
 
+  # M1 — the parse/match service (backend/../ml-service). Like the app
+  # itself, this runs outside compose in a real deploy, reachable from
+  # Spring Boot only as http://ml-service:8000 on that deploy's internal
+  # network — never a public one. The port below is published for local
+  # dev only (the app runs via `./mvnw spring-boot:run` on the host, same
+  # as db/redis/minio above), bound to loopback only so it's still not
+  # reachable off this machine. If this container isn't running (or is
+  # unhealthy), the app doesn't fail — JobPostingParseService falls back
+  # to manual entry after its configured timeout/retries.
+  ml-service:
+    build: ../ml-service
+    container_name: job-trail-ml-service
+    restart: unless-stopped
+    environment:
+      MLSVC_INTERNAL_API_KEY: ${ML_SERVICE_SHARED_SECRET:-}
+      MLSVC_OPENAI_API_KEY: ${MLSVC_OPENAI_API_KEY:-}
+    ports:
+      - "127.0.0.1:${ML_SERVICE_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   job-trail-db-data:
   job-trail-minio-data:

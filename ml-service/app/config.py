@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     scrape_timeout_seconds: float = 10.0
     scrape_max_chars: int = 15_000
 
+    # Shared secret Spring Boot sends as the X-Internal-Api-Key header on
+    # every call (see backend's app.ml-service.shared-secret). Unset by
+    # default — this service has no auth of its own and relies on network
+    # placement (only reachable from Spring over the internal Docker
+    # network) — but set the same value on both sides in any deploy where
+    # that boundary isn't airtight, e.g. a shared/multi-tenant network.
+    internal_api_key: str | None = None
+
     # --- LLM extraction (/parse) ---
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"

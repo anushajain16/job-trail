@@ -90,6 +90,25 @@ app:
       secret-key: ${MINIO_SECRET_KEY:jobtrail123}
       bucket: ${MINIO_BUCKET:job-trail-documents}
       presigned-url-ttl: ${MINIO_PRESIGNED_URL_TTL:PT10M}
+  ml-service:
+    # localhost default matches this app's own local-dev posture: it runs
+    # on the host (./mvnw spring-boot:run), reaching ml-service's compose
+    # container via its loopback-only published port (see
+    # docker-compose.yml). A real deploy, where both services run on the
+    # same internal network, overrides this to the container/service name
+    # (e.g. http://ml-service:8000) — never a public URL either way.
+    base-url: ${ML_SERVICE_BASE_URL:http://localhost:8000}
+    # Blank by default (no header sent) so local dev works with ml-service's
+    # own MLSVC_INTERNAL_API_KEY also unset. Every real deploy should set
+    # this to the same value as ml-service's MLSVC_INTERNAL_API_KEY.
+    shared-secret: ${ML_SERVICE_SHARED_SECRET:}
+    connect-timeout: ${ML_SERVICE_CONNECT_TIMEOUT:PT3S}
+    # Generous: covers ml-service's own scrape (MLSVC_SCRAPE_TIMEOUT_SECONDS,
+    # default 10s) plus its LLM extraction call (MLSVC_OPENAI_TIMEOUT_SECONDS,
+    # default 30s).
+    read-timeout: ${ML_SERVICE_READ_TIMEOUT:PT45S}
+    max-retries: ${ML_SERVICE_MAX_RETRIES:2}
+    retry-backoff: ${ML_SERVICE_RETRY_BACKOFF:PT1S}
 
 springdoc:
   api-docs:
@@ -142,3 +161,12 @@ app:
   scheduling:
     auto-ghost-cron: "-"
     reminder-cron: "-"
+  # No ml-service in the test profile's docker-compose/testcontainers setup
+  # — a short timeout and zero retries keep any test that hits
+  # JobPostingParseService fast (it should still assert the graceful
+  # fallback, not a live parse) instead of waiting out the base profile's
+  # 45s read timeout and two retries.
+  ml-service:
+    connect-timeout: PT0.5S
+    read-timeout: PT1S
+    max-retries: 0

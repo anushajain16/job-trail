@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends
 
 from app.config import Settings
-from app.deps import get_embedding_provider, get_settings_dep
+from app.deps import get_embedding_provider, get_settings_dep, verify_internal_api_key
 from app.schemas import MatchRequest, MatchResponse
 from app.services.embeddings import EmbeddingProvider
 from app.services.matcher import extract_candidate_skills, find_matched_and_missing_skills, score_match
 
-router = APIRouter(prefix="/match", tags=["match"])
+router = APIRouter(prefix="/match", tags=["match"], dependencies=[Depends(verify_internal_api_key)])
 
 
 @router.post("", response_model=MatchResponse)
