@@ -81,6 +81,18 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+
+    /* Subway map (src/features/subway-map) — a status palette, not a
+     * per-line categorical one: color encodes what happened to an
+     * application (still moving / offer / rejected / ghosted), so two
+     * lines both mid-pipeline read as the same color on purpose. See
+     * dataviz skill's palette.md "Status palette (fixed - never themed)" —
+     * these hexes are mode-invariant by design, unlike the categorical set. */
+    --subway-active: #2a78d6;
+    --subway-offer: #0ca30c;
+    --subway-rejected: #d03b3b;
+    --subway-ghosted: #898781;
+    --subway-track-remaining: #e1e0d9;
 }
 
 .dark {
@@ -115,6 +127,15 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+
+    /* Same four status hexes — the palette is mode-invariant (see :root) —
+     * only the neutral "remaining track" gridline steps for the dark
+     * surface. */
+    --subway-active: #3987e5;
+    --subway-offer: #0ca30c;
+    --subway-rejected: #d03b3b;
+    --subway-ghosted: #898781;
+    --subway-track-remaining: #2c2c2a;
 }
 
 @layer base {
