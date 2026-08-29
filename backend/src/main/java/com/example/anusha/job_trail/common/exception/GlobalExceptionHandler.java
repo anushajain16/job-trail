@@ -5,6 +5,7 @@ import com.example.anusha.job_trail.auth.exception.InvalidRefreshTokenException;
 import com.example.anusha.job_trail.auth.exception.OAuthVerificationException;
 import com.example.anusha.job_trail.document.exception.DocumentTooLargeException;
 import com.example.anusha.job_trail.document.exception.UnsupportedDocumentTypeException;
+import com.example.anusha.job_trail.matching.exception.MlServiceUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -103,6 +104,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
         return build(HttpStatus.METHOD_NOT_ALLOWED, ex.getMessage(), request);
+    }
+
+    // See matching.exception.MlServiceUnavailableException's doc comment:
+    // unlike jobposting's own version of this exception (caught and turned
+    // into a graceful "fall back to manual entry" response), a match-score
+    // call with no ml-service to reach has nothing to fall back to.
+    @ExceptionHandler(MlServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleMlServiceUnavailable(MlServiceUnavailableException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_GATEWAY, ex.getMessage(), request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

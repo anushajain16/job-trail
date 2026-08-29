@@ -21,8 +21,10 @@ export function useApplicationQuery(id: string | undefined) {
 
 /** Patches `id` wherever it appears across every cached list page, plus its
  * own detail query if cached. Shared by the update and delete mutations'
- * optimistic-update step. */
-function patchCachedApplication(
+ * optimistic-update step, and by features/matching's score mutation (no
+ * optimistic step there — it patches in onSuccess with the real result,
+ * there's nothing to guess ahead of a match score coming back). */
+export function patchCachedApplication(
   queryClient: QueryClient,
   id: string,
   patch: (application: Application) => Application | null,
@@ -72,10 +74,15 @@ export function useCreateApplicationMutation() {
         link: input.link.trim() || null,
         source: input.source.trim() || null,
         notes: input.notes.trim() || null,
+        jobDescriptionText: input.jobDescriptionText.trim() || null,
         deadline: input.deadline.trim() || null,
         currentStage: 'SAVED',
         resumeVersionId: null,
         coverLetterVersionId: null,
+        matchScore: null,
+        matchedSkills: [],
+        missingSkills: [],
+        scoredAt: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -130,6 +137,7 @@ export function useUpdateApplicationMutation() {
         link: input.link.trim() || null,
         source: input.source.trim() || null,
         notes: input.notes.trim() || null,
+        jobDescriptionText: input.jobDescriptionText.trim() || null,
         deadline: input.deadline.trim() || null,
         updatedAt: new Date().toISOString(),
       }))

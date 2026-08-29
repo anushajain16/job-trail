@@ -26,6 +26,7 @@ function toRequestBody(input: ApplicationInput): Record<string, unknown> {
     link: input.link,
     source: input.source,
     notes: input.notes,
+    jobDescriptionText: input.jobDescriptionText,
     deadline: input.deadline,
   }
   for (const [key, value] of Object.entries(optional)) {

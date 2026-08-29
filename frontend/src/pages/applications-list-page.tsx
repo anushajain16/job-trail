@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DeleteApplicationDialog } from '@/features/applications/delete-application-dialog'
 import { useApplicationsQuery } from '@/features/applications/hooks'
 import { STAGE_LABELS, type Application } from '@/features/applications/types'
+import { MatchScoreBadge } from '@/features/matching/match-score-badge'
 import { describeApiError } from '@/lib/describe-api-error'
 
 const PAGE_SIZE = 10
@@ -56,6 +57,7 @@ export function ApplicationsListPage() {
                   <TableHead>Company</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Stage</TableHead>
+                  <TableHead>Match</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Deadline</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -68,6 +70,9 @@ export function ApplicationsListPage() {
                     <TableCell>{application.role}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{STAGE_LABELS[application.currentStage]}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <MatchScoreBadge application={application} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">{application.location ?? '—'}</TableCell>
                     <TableCell className="text-muted-foreground">{application.deadline ?? '—'}</TableCell>

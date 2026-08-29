@@ -35,10 +35,18 @@ export interface Application {
   link: string | null
   source: string | null
   notes: string | null
+  jobDescriptionText: string | null
   deadline: string | null // ISO date (YYYY-MM-DD), LocalDate on the wire
   currentStage: Stage
   resumeVersionId: string | null
   coverLetterVersionId: string | null
+  // Null until POST /{id}/score has run at least once — see
+  // features/matching. matchedSkills/missingSkills are [] (never null)
+  // once a score exists.
+  matchScore: number | null
+  matchedSkills: string[]
+  missingSkills: string[]
+  scoredAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -73,6 +81,7 @@ export interface ApplicationInput {
   link: string
   source: string
   notes: string
+  jobDescriptionText: string
   deadline: string
 }
 
@@ -85,6 +94,7 @@ export const EMPTY_APPLICATION_INPUT: ApplicationInput = {
   link: '',
   source: '',
   notes: '',
+  jobDescriptionText: '',
   deadline: '',
 }
 
@@ -98,6 +108,7 @@ export function applicationToInput(application: Application): ApplicationInput {
     link: application.link ?? '',
     source: application.source ?? '',
     notes: application.notes ?? '',
+    jobDescriptionText: application.jobDescriptionText ?? '',
     deadline: application.deadline ?? '',
   }
 }

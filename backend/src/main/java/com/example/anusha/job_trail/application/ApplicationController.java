@@ -5,6 +5,8 @@ import com.example.anusha.job_trail.application.dto.ApplicationResponse;
 import com.example.anusha.job_trail.application.dto.ApplicationUpdateRequest;
 import com.example.anusha.job_trail.auth.security.AuthenticatedUser;
 import com.example.anusha.job_trail.auth.security.CurrentUser;
+import com.example.anusha.job_trail.matching.MatchScoringService;
+import com.example.anusha.job_trail.matching.dto.MatchScoreResponse;
 import com.example.anusha.job_trail.status.dto.StageChangeRequest;
 import com.example.anusha.job_trail.status.dto.StatusHistoryResponse;
 import jakarta.validation.Valid;
@@ -31,9 +33,11 @@ import java.util.UUID;
 public class ApplicationController {
 
     private final ApplicationService applicationService;
+    private final MatchScoringService matchScoringService;
 
-    public ApplicationController(ApplicationService applicationService) {
+    public ApplicationController(ApplicationService applicationService, MatchScoringService matchScoringService) {
         this.applicationService = applicationService;
+        this.matchScoringService = matchScoringService;
     }
 
     @GetMapping
@@ -75,5 +79,16 @@ public class ApplicationController {
     @GetMapping("/{id}/history")
     public List<StatusHistoryResponse> history(@CurrentUser AuthenticatedUser currentUser, @PathVariable UUID id) {
         return applicationService.getHistory(id, currentUser.id());
+    }
+
+    // See matching.MatchScoringService — resume ↔ JD match %, cached until
+    // either the resume profile or this application's job description text
+    // changes. Requires job_description_text to already be set (400 if
+    // not) and a parsed resume profile to exist (404 if not) — this
+    // endpoint scores against what's already stored, it doesn't collect
+    // either input itself.
+    @PostMapping("/{id}/score")
+    public MatchScoreResponse score(@CurrentUser AuthenticatedUser currentUser, @PathVariable UUID id) {
+        return matchScoringService.score(id, currentUser.id());
     }
 }

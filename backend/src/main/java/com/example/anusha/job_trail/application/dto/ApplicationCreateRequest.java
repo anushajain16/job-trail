@@ -17,7 +17,11 @@ public record ApplicationCreateRequest(
         @URL @Size(max = 2048) String link,
         @Size(max = 100) String source,
         @Size(max = 5000) String notes,
-        LocalDate deadline
+        LocalDate deadline,
+        // The actual posting text — what /score is run against. Free-form,
+        // no size cap match the ml-service scrape budget: pasted straight
+        // from a posting, this can legitimately run to a few thousand words.
+        String jobDescriptionText
 ) {
 
     @AssertTrue(message = "salaryMin must not be greater than salaryMax")

@@ -28,6 +28,16 @@ public interface DocumentStorage {
      */
     String presignedDownloadUrl(String key, String filename, Duration ttl);
 
+    /**
+     * Streams the object's bytes back into this app — unlike every other
+     * method here, which either writes or hands the client a URL to fetch
+     * from directly. The one caller that needs this is
+     * {@code ResumeProfileService}: resume text extraction (Tika) has to
+     * run server-side, so it needs the actual bytes, not a redirect.
+     * Caller-closed, same contract as any {@code InputStream}.
+     */
+    InputStream open(String key);
+
     /** Deletes the object at {@code key}. A no-op if it doesn't exist. */
     void delete(String key);
 }

@@ -2,6 +2,7 @@ package com.example.anusha.job_trail.document.storage;
 
 import com.example.anusha.job_trail.document.DocumentProperties;
 import io.minio.BucketExistsArgs;
+import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
@@ -80,6 +81,15 @@ public class MinioDocumentStorage implements DocumentStorage, InitializingBean {
                     .build());
         } catch (Exception e) {
             throw new DocumentStorageException("Failed to presign a download URL for key " + key, e);
+        }
+    }
+
+    @Override
+    public InputStream open(String key) {
+        try {
+            return minioClient.getObject(GetObjectArgs.builder().bucket(bucket).object(key).build());
+        } catch (Exception e) {
+            throw new DocumentStorageException("Failed to open document at key " + key, e);
         }
     }
 

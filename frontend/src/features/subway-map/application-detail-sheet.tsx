@@ -10,6 +10,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { STAGE_LABELS, type Application } from '@/features/applications/types'
+import { MatchScoreBadge } from '@/features/matching/match-score-badge'
 import type { HistoryEntry } from '@/features/subway-map/api'
 import { STATUS_LABELS, categorizeStage } from '@/features/subway-map/layout'
 import { statusColor } from '@/features/subway-map/status-color'
@@ -67,6 +68,37 @@ export function ApplicationDetailSheet({ application, history, onOpenChange }: A
                 <p className="whitespace-pre-wrap text-sm">{application.notes}</p>
               </div>
             )}
+
+            <Separator />
+
+            <div className="flex flex-col gap-3">
+              <p className="text-xs font-medium text-muted-foreground">Resume match</p>
+              <MatchScoreBadge application={application} />
+              {application.matchScore !== null && application.missingSkills.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-xs text-muted-foreground">Missing skills</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {application.missingSkills.map((skill) => (
+                      <Badge key={skill} variant="destructive">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {application.matchScore !== null && application.matchedSkills.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-xs text-muted-foreground">Matched skills</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {application.matchedSkills.map((skill) => (
+                      <Badge key={skill} variant="outline">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <Separator />
 

@@ -20,6 +20,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * A single tracked job application: who it's for (company, role), where it
@@ -64,6 +65,44 @@ public class Application extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    // The actual posting text /api/applications/{id}/score is run against —
+    // not derived from company/role/notes. Optional: most applications,
+    // and any created before this field existed, simply have none yet, and
+    // MatchScoringService rejects a score request until it's set.
+    @Column(name = "job_description_text", columnDefinition = "TEXT")
+    private String jobDescriptionText;
+
+    // --- Match result cache — see matching.MatchScoringService. All null
+    // until the first successful /score call; refreshed (or left alone,
+    // on a cache hit) by every call after that. Same "read-optimized
+    // cache kept in sync by exactly one service" shape as currentStage
+    // below, except this cache's own service owns writing it directly
+    // (no separate append-only log backs a match result the way
+    // status_history backs currentStage).
+    @Column(name = "match_score")
+    private Double matchScore;
+
+    // JSON string arrays (e.g. ["python","fastapi"]) — same "nothing
+    // queries inside it" reasoning as resume_profile.profile_json.
+    @Column(name = "matched_skills", columnDefinition = "TEXT")
+    private String matchedSkills;
+
+    @Column(name = "missing_skills", columnDefinition = "TEXT")
+    private String missingSkills;
+
+    // The cache key a stored match result was computed from: which resume
+    // profile, and a hash of which JD text. MatchScoringService.score
+    // skips calling ml-service again when both still match the caller's
+    // current profile id and current job_description_text.
+    @Column(name = "scored_resume_profile_id")
+    private UUID scoredResumeProfileId;
+
+    @Column(name = "scored_jd_hash", length = 64)
+    private String scoredJdHash;
+
+    @Column(name = "scored_at")
+    private Instant scoredAt;
 
     // Optional: a posting's stated deadline, or a self-set follow-up date.
     // The only reader today is the auto-ghost job (see the scheduler

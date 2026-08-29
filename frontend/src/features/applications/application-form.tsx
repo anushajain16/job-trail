@@ -142,6 +142,15 @@ export function ApplicationForm({
         <Textarea value={values.notes} onChange={(e) => setField('notes', e.target.value)} maxLength={5000} rows={4} />
       </Field>
 
+      <Field label="Job description" error={undefined}>
+        <Textarea
+          value={values.jobDescriptionText}
+          onChange={(e) => setField('jobDescriptionText', e.target.value)}
+          rows={6}
+          placeholder="Paste the posting text here — this is what match scoring runs against."
+        />
+      </Field>
+
       {submitError && (
         <p role="alert" className="text-sm text-destructive">
           {submitError}

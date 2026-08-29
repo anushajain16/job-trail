@@ -9,6 +9,7 @@ from fastapi import Depends, Header, HTTPException, status
 from app.config import Settings, get_settings
 from app.services.embeddings import EmbeddingProvider, HashingEmbeddingProvider, SentenceTransformerProvider
 from app.services.llm_client import LLMClient, OpenAILLMClient, StubLLMClient
+from app.services.resume_profile_client import OpenAIResumeProfileClient, ResumeProfileClient, StubResumeProfileClient
 
 
 @lru_cache
@@ -21,6 +22,18 @@ def get_llm_client() -> LLMClient:
             timeout_seconds=settings.openai_timeout_seconds,
         )
     return StubLLMClient()
+
+
+@lru_cache
+def get_resume_profile_client() -> ResumeProfileClient:
+    settings = get_settings()
+    if settings.openai_api_key:
+        return OpenAIResumeProfileClient(
+            api_key=settings.openai_api_key,
+            model=settings.openai_model,
+            timeout_seconds=settings.openai_timeout_seconds,
+        )
+    return StubResumeProfileClient()
 
 
 @lru_cache

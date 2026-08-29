@@ -31,7 +31,8 @@ public record ApplicationUpdateRequest(
         @Size(max = 5000) String notes,
         LocalDate deadline,
         UUID resumeVersionId,
-        UUID coverLetterVersionId
+        UUID coverLetterVersionId,
+        String jobDescriptionText
 ) {
 
     @AssertTrue(message = "salaryMin must not be greater than salaryMax")

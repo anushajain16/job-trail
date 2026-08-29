@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ResumeProfileCard } from '@/features/matching/resume-profile-card'
 import { useHealth } from '@/hooks/use-health'
 
 export function DashboardPage() {
@@ -26,6 +27,8 @@ export function DashboardPage() {
               : 'No response yet.'}
         </CardContent>
       </Card>
+
+      <ResumeProfileCard />
     </div>
   )
 }

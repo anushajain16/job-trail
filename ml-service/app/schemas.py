@@ -69,6 +69,51 @@ class MatchResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# /profile
+# ---------------------------------------------------------------------------
+
+class ProfileRequest(BaseModel):
+    resume_text: str = Field(min_length=1)
+
+
+class ResumeProfile(BaseModel):
+    """The structured shape a resume gets parsed into, once — this is what
+    the Java side persists and what every /score call for that user reuses,
+    instead of re-sending the raw resume text (and re-running extraction)
+    on every scoring request."""
+
+    skills: list[str] = Field(default_factory=list)
+    years_experience: float | None = Field(default=None, description="Total years of professional experience.")
+    roles: list[str] = Field(default_factory=list, description="Past job titles, most recent first.")
+    seniority: str | None = Field(default=None, description="e.g. junior, mid, senior, staff")
+    summary: str | None = Field(default=None, description="One or two sentence summary of the candidate.")
+
+
+class ProfileResponse(BaseModel):
+    profile: ResumeProfile
+    confidence: float = Field(ge=0.0, le=1.0, description="Extraction confidence, 0 (unreliable) to 1 (high).")
+
+
+# ---------------------------------------------------------------------------
+# /score
+# ---------------------------------------------------------------------------
+
+class ScoreRequest(BaseModel):
+    profile: ResumeProfile
+    job_description_text: str = Field(min_length=1)
+    # Same deal as MatchRequest.required_skills: usually the caller's prior
+    # /parse result: passing it skips re-deriving skills from raw JD text.
+    required_skills: list[str] | None = None
+
+
+class ScoreResponse(BaseModel):
+    match_pct: float = Field(ge=0.0, le=1.0, description="Embedding cosine similarity, profile vs. job description.")
+    matched_skills: list[str]
+    missing_skills: list[str]
+    considered_skills: list[str] = Field(description="Full skill set the score/gap list was computed against.")
+
+
+# ---------------------------------------------------------------------------
 # /health
 # ---------------------------------------------------------------------------
 

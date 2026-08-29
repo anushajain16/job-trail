@@ -11,10 +11,12 @@ the internal Docker network, and every request is fully self-contained.
 | `GET`  | `/health` | Liveness probe — no downstream calls. |
 | `POST` | `/parse`  | `{url}` or `{text}` in → scrape (if `url`) → LLM extraction → structured job posting + confidence. |
 | `POST` | `/match`  | `{resume_text, job_description_text, required_skills?}` in → embedding similarity score + matched/missing skills. |
+| `POST` | `/profile` | `{resume_text}` in → LLM extraction → structured `ResumeProfile` (skills, years of experience, past roles, seniority) + confidence. Spring persists the result; this endpoint itself is stateless like every other one here. |
+| `POST` | `/score`  | `{profile, job_description_text, required_skills?}` in → embedding similarity (`match_pct`) + matched/missing skills, `profile` against the JD. The resume-scoring counterpart to `/match`, but takes the *parsed* profile instead of raw resume text — the one-time `/profile` extraction is what the match quality actually rides on. |
 
 Interactive docs (Swagger UI) at `/docs` once the service is running.
 
-`/parse` and `/match` check the `X-Internal-Api-Key` header against
+`/parse`, `/match`, `/profile`, and `/score` all check the `X-Internal-Api-Key` header against
 `MLSVC_INTERNAL_API_KEY` when that's set (unset by default — see
 `.env.example`); `/health` never does, since it must stay reachable for a
 liveness probe with no credentials of its own. This is defense in depth,
@@ -25,13 +27,14 @@ only from Spring Boot over the internal Docker network, never a public one.
 
 Neither endpoint requires external credentials to run:
 
-- **No `OPENAI_API_KEY`** → `/parse` falls back to `StubLLMClient`, a
-  deterministic regex + keyword-vocabulary extractor. Lower confidence,
-  never a hard failure.
-- **`MLSVC_EMBEDDING_BACKEND=hashing`** → `/match` uses a dependency-free
-  hashed bag-of-words vectorizer instead of downloading the real
-  sentence-transformers model. This is what the test suite runs on, so CI
-  needs no model download and no network call.
+- **No `OPENAI_API_KEY`** → `/parse` falls back to `StubLLMClient` and
+  `/profile` falls back to `StubResumeProfileClient`, both deterministic
+  regex + keyword-vocabulary extractors. Lower confidence, never a hard
+  failure.
+- **`MLSVC_EMBEDDING_BACKEND=hashing`** → `/match` and `/score` use a
+  dependency-free hashed bag-of-words vectorizer instead of downloading the
+  real sentence-transformers model. This is what the test suite runs on, so
+  CI needs no model download and no network call.
 
 The real backends (`OpenAILLMClient`, `SentenceTransformerProvider`) are the
 production default; see `.env.example` for every override.
@@ -70,9 +73,12 @@ app/
     health.py
     parse.py
     match.py
+    profile.py
+    score.py
   services/
     scraper.py          URL → plain text (httpx + BeautifulSoup)
     llm_client.py        LLM extraction: OpenAILLMClient + StubLLMClient behind one interface
+    resume_profile_client.py  LLM resume extraction: same shape as llm_client.py, different target
     embeddings.py         Text → vector: SentenceTransformerProvider + HashingEmbeddingProvider
     matcher.py             Score + matched/missing skills, given an EmbeddingProvider
     skills_vocab.py         Shared keyword vocabulary (stub extraction + skill derivation)
