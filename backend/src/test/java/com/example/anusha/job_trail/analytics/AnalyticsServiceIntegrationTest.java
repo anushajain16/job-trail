@@ -1,5 +1,6 @@
 package com.example.anusha.job_trail.analytics;
 
+import com.example.anusha.job_trail.common.AbstractIntegrationTest;
 import com.example.anusha.job_trail.analytics.dto.ConversionResponse;
 import com.example.anusha.job_trail.analytics.dto.FunnelResponse;
 import com.example.anusha.job_trail.analytics.dto.ResumePerformanceResponse;
@@ -22,7 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -36,8 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Seeds a hand-computed status_history against the real (dockerized)
- * Postgres behind the "test" profile, then checks AnalyticsService's funnel,
+ * Seeds a hand-computed status_history against a real Postgres started by
+ * Testcontainers (see AbstractIntegrationTest), then checks AnalyticsService's funnel,
  * conversion, and time-in-stage math against numbers worked out by hand.
  *
  * <p>Rows are written straight through the repositories rather than the
@@ -48,8 +48,7 @@ import static org.assertj.core.api.Assertions.within;
  * meaningful.
  */
 @SpringBootTest
-@ActiveProfiles("test")
-class AnalyticsServiceIntegrationTest {
+class AnalyticsServiceIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;

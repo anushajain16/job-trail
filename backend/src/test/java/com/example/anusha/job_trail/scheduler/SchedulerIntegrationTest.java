@@ -1,5 +1,6 @@
 package com.example.anusha.job_trail.scheduler;
 
+import com.example.anusha.job_trail.common.AbstractIntegrationTest;
 import com.example.anusha.job_trail.application.Application;
 import com.example.anusha.job_trail.application.ApplicationRepository;
 import com.example.anusha.job_trail.notification.mail.EmailSender;
@@ -16,7 +17,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.lang.reflect.Method;
 import java.sql.Timestamp;
@@ -33,8 +33,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Against the real app context and the real (dockerized) Postgres behind
- * the "test" profile — no mocks. The "test" profile pins both jobs' cron
+ * Against the real app context and a real Postgres started by Testcontainers
+ * (see AbstractIntegrationTest) — no mocks. The "test" profile pins both jobs' cron
  * expressions to {@code "-"} (Spring's documented "never fire"), so nothing
  * here races a real sweep; every job service is invoked directly to control
  * timing exactly. Seeding bypasses {@link com.example.anusha.job_trail.status.StatusHistoryService}
@@ -43,8 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code AnalyticsServiceIntegrationTest} uses for {@code changed_at}.
  */
 @SpringBootTest
-@ActiveProfiles("test")
-class SchedulerIntegrationTest {
+class SchedulerIntegrationTest extends AbstractIntegrationTest {
 
     /**
      * Swaps the real SMTP-backed {@code EmailSender} for one that just

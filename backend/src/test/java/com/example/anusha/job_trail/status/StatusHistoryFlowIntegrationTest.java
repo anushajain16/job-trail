@@ -1,11 +1,11 @@
 package com.example.anusha.job_trail.status;
 
+import com.example.anusha.job_trail.common.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
@@ -20,15 +20,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * End-to-end against the real app context and the real (dockerized) Postgres
- * behind the "test" profile — no mocks. Covers the stage-change endpoint,
+ * End-to-end against the real app context and a real Postgres started by Testcontainers
+ * (see AbstractIntegrationTest) — no mocks. Covers the stage-change endpoint,
  * the ordered timeline it produces, and the auth boundary: one user's
  * application history must be invisible to another.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
-class StatusHistoryFlowIntegrationTest {
+class StatusHistoryFlowIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

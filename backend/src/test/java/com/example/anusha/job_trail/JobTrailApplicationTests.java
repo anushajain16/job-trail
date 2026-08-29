@@ -1,12 +1,11 @@
 package com.example.anusha.job_trail;
 
+import com.example.anusha.job_trail.common.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
-@ActiveProfiles("test")
-class JobTrailApplicationTests {
+class JobTrailApplicationTests extends AbstractIntegrationTest {
 
 	@Test
 	void contextLoads() {

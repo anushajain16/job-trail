@@ -34,6 +34,7 @@
 		<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
 		<google-api-client.version>2.8.1</google-api-client.version>
 		<minio.version>8.5.17</minio.version>
+		<jacoco.version>0.8.12</jacoco.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -158,6 +159,14 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<!-- Backs AbstractIntegrationTest's singleton Postgres container —
+			     every @SpringBootTest/@DataJpaTest runs against this instead of
+			     the docker-compose db, so `mvn test` needs nothing but Docker. -->
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
 			<!-- Real MinIO server in a container, for the one integration test
 			     that exercises MinioDocumentStorage against a live server
 			     instead of a mock — every other document test mocks
@@ -173,6 +182,30 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<!-- Instruments `mvn test` via the "prepare-agent" javaagent, then
+				     renders target/site/jacoco/index.html on `mvn verify` (or
+				     right after `test`, since "report" is bound to the "test"
+				     phase too — no separate verify step needed just to see it). -->
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

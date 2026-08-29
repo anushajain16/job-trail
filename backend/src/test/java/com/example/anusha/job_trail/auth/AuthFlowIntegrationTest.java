@@ -1,5 +1,6 @@
 package com.example.anusha.job_trail.auth;
 
+import com.example.anusha.job_trail.common.AbstractIntegrationTest;
 import com.example.anusha.job_trail.auth.security.JwtProperties;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -8,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
@@ -27,15 +27,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * End-to-end against the real app context and the real (dockerized)
- * Postgres behind the "test" profile — no mocks. Covers the whole
+ * End-to-end against the real app context and a real Postgres started by
+ * Testcontainers (see AbstractIntegrationTest) — no mocks. Covers the whole
  * signup/login/refresh/logout lifecycle plus the protected-route rejection
  * cases called out as "done" criteria.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
-class AuthFlowIntegrationTest {
+class AuthFlowIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

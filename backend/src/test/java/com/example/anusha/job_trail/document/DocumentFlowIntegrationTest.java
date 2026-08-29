@@ -1,12 +1,12 @@
 package com.example.anusha.job_trail.document;
 
+import com.example.anusha.job_trail.common.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -28,8 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * End-to-end against the real app context, the real (dockerized) Postgres
- * behind the "test" profile, and a real MinIO server started in a
+ * End-to-end against the real app context, a real Postgres started by Testcontainers
+ * (see AbstractIntegrationTest), and a real MinIO server started in a
  * Testcontainer — the one test in this feature that exercises
  * {@link com.example.anusha.job_trail.document.storage.MinioDocumentStorage}
  * itself rather than a mock. Covers the actual upload/download round trip
@@ -38,9 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 @Testcontainers
-class DocumentFlowIntegrationTest {
+class DocumentFlowIntegrationTest extends AbstractIntegrationTest {
 
     @Container
     static MinIOContainer minio = new MinIOContainer("minio/minio:latest");

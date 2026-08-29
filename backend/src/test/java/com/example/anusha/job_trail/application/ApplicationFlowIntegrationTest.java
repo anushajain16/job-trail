@@ -1,11 +1,11 @@
 package com.example.anusha.job_trail.application;
 
+import com.example.anusha.job_trail.common.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
@@ -22,15 +22,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * End-to-end against the real app context and the real (dockerized) Postgres
- * behind the "test" profile — no mocks. Covers full CRUD, validation
+ * End-to-end against the real app context and a real Postgres started by Testcontainers
+ * (see AbstractIntegrationTest) — no mocks. Covers full CRUD, validation
  * failures, and the auth-boundary requirement: one user's applications must
  * be invisible and unmodifiable to another, even by guessing a valid id.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
-class ApplicationFlowIntegrationTest {
+class ApplicationFlowIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

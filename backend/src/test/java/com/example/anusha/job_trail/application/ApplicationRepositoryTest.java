@@ -1,5 +1,6 @@
 package com.example.anusha.job_trail.application;
 
+import com.example.anusha.job_trail.common.AbstractIntegrationTest;
 import com.example.anusha.job_trail.common.config.FlywayConfig;
 import com.example.anusha.job_trail.common.config.JpaAuditingConfig;
 import com.example.anusha.job_trail.user.User;
@@ -11,7 +12,6 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -21,14 +21,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @DataJpaTest is a narrow slice — it doesn't pick up plain @Configuration
  * beans the way the full app context does, so FlywayConfig and
- * JpaAuditingConfig are imported explicitly. Runs against the real Postgres
- * behind the "test" profile (see application.yml), not an embedded DB.
+ * JpaAuditingConfig are imported explicitly. Runs against a real Postgres started by Testcontainers
+ * (see AbstractIntegrationTest), not an embedded DB.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({FlywayConfig.class, JpaAuditingConfig.class})
-@ActiveProfiles("test")
-class ApplicationRepositoryTest {
+class ApplicationRepositoryTest extends AbstractIntegrationTest {
 
     @Autowired
     private ApplicationRepository applicationRepository;
