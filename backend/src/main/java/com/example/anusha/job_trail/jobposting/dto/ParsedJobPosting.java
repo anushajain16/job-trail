@@ -1,27 +1,31 @@
 package com.example.anusha.job_trail.jobposting.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
 import java.util.List;
 
 /**
- * Mirrors ml-service's {@code ParsedJobPosting} schema (see
- * {@code ml-service/app/schemas.py}). Every field is nullable/best-effort —
- * this is what {@code /parse} extracted, not a validated {@code Application}.
- * ml-service is FastAPI/Pydantic and returns snake_case field names, hence
- * the explicit {@link JsonProperty} mapping to this side's camelCase.
+ * Doubles as ml-service's wire shape (nested inside {@link MlParseResponse}
+ * to deserialize its snake_case {@code POST /parse} response) and this
+ * app's own outbound shape (nested inside {@link ParseUrlResponse}, the
+ * frontend-facing DTO) — so its Jackson names have to work in both
+ * directions at once: {@link JsonAlias} accepts ml-service's snake_case
+ * names on the way in, without changing what gets serialized on the way
+ * out, which stays this side's plain camelCase (unlike {@code @JsonProperty},
+ * which would apply the same name to both directions and leak
+ * ml-service's naming into this app's own API).
  */
 public record ParsedJobPosting(
         String company,
         String role,
         String location,
-        @JsonProperty("employment_type") String employmentType,
+        @JsonAlias("employment_type") String employmentType,
         String seniority,
-        @JsonProperty("salary_min") Double salaryMin,
-        @JsonProperty("salary_max") Double salaryMax,
+        @JsonAlias("salary_min") Double salaryMin,
+        @JsonAlias("salary_max") Double salaryMax,
         String currency,
-        @JsonProperty("required_skills") List<String> requiredSkills,
-        @JsonProperty("nice_to_have_skills") List<String> niceToHaveSkills,
+        @JsonAlias("required_skills") List<String> requiredSkills,
+        @JsonAlias("nice_to_have_skills") List<String> niceToHaveSkills,
         String summary
 ) {
 }
