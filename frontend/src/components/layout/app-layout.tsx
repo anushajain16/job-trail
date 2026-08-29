@@ -3,7 +3,10 @@ import { BackendStatusBadge } from '@/components/layout/backend-status-badge'
 import { UserMenu } from '@/components/layout/user-menu'
 import { cn } from '@/lib/utils'
 
-const NAV_LINKS = [{ to: '/', label: 'Dashboard' }]
+const NAV_LINKS = [
+  { to: '/', label: 'Dashboard', end: true },
+  { to: '/applications', label: 'Applications', end: false },
+]
 
 /** Shell every route renders inside: header (brand, nav, backend status)
  * over a content area. Nothing here is route-specific — that's what
@@ -20,7 +23,7 @@ export function AppLayout() {
                 <NavLink
                   key={link.to}
                   to={link.to}
-                  end
+                  end={link.end}
                   className={({ isActive }) =>
                     cn(
                       'text-sm text-muted-foreground transition-colors hover:text-foreground',
