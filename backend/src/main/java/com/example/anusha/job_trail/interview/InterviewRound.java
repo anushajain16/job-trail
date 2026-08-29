@@ -63,6 +63,13 @@ public class InterviewRound extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String reflection;
 
+    // Set by CalendarSyncService after the first successful "Add to
+    // Calendar" call, null until then. Its presence is exactly what tells
+    // that service to update this event on Google's side rather than
+    // create a duplicate on a second sync.
+    @Column(name = "google_event_id", length = 255)
+    private String googleEventId;
+
     // Not on BaseEntity: this entity updates in place (edited notes and
     // reflections are the whole point), unlike the append-only event logs
     // that don't declare one.

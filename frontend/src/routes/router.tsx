@@ -8,6 +8,7 @@ import { ApplicationEditPage } from '@/pages/application-edit-page'
 import { AnalyticsPage } from '@/pages/analytics-page'
 import { ApplicationsListPage } from '@/pages/applications-list-page'
 import { DashboardPage } from '@/pages/dashboard-page'
+import { SettingsPage } from '@/pages/settings-page'
 import { SubwayMapPage } from '@/pages/subway-map-page'
 
 export const router = createBrowserRouter([
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
           { path: 'applications', element: <ApplicationsListPage /> },
           { path: 'applications/new', element: <ApplicationCreatePage /> },
           { path: 'applications/:id/edit', element: <ApplicationEditPage /> },
+          { path: 'settings', element: <SettingsPage /> },
         ],
       },
     ],

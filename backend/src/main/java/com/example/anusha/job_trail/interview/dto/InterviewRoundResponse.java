@@ -12,6 +12,9 @@ public record InterviewRoundResponse(
         String questionsAsked,
         String notes,
         String reflection,
+        // Null until POST /{id}/calendar-sync has run at least once — see
+        // googlecalendar.CalendarSyncService.
+        String googleEventId,
         Instant createdAt,
         Instant updatedAt
 ) {

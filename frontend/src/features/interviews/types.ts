@@ -8,6 +8,9 @@ export interface InterviewRound {
   questionsAsked: string | null
   notes: string | null
   reflection: string | null
+  // Null until POST /{id}/calendar-sync has run at least once — see
+  // features/google-calendar.
+  googleEventId: string | null
   createdAt: string
   updatedAt: string
 }

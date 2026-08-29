@@ -27,6 +27,11 @@ public class SecurityConfig {
             "/api/auth/oauth/**",
             "/api/auth/refresh",
             "/api/auth/logout",
+            // Google redirects the browser here directly after a connect
+            // flow — a full-page navigation, not a fetch, so it can't carry
+            // a bearer token. The state param (see GoogleConnectStateService)
+            // is what ties the callback back to a specific user instead.
+            "/api/google-calendar/callback",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",

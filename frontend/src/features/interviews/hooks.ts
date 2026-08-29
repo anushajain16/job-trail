@@ -47,3 +47,14 @@ export function useDeleteInterviewRoundMutation(applicationId: string) {
     },
   })
 }
+
+export function useCalendarSyncMutation(applicationId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => interviewRoundsApi.calendarSync(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: interviewRoundKeys.list(applicationId) })
+    },
+  })
+}

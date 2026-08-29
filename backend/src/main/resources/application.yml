@@ -74,6 +74,24 @@ app:
     github:
       client-id: ${GITHUB_OAUTH_CLIENT_ID:}
       client-secret: ${GITHUB_OAUTH_CLIENT_SECRET:}
+  # A separate OAuth client from app.oauth.google above on purpose: that one
+  # only ever verifies a Google Identity Services ID token (no client
+  # secret, no server-side call to Google at all); this one is a full
+  # authorization-code connect flow (needs a client secret to exchange a
+  # code, and access_type=offline to get a refresh token back) for the
+  # calendar.events scope specifically. Same "no dev fallback for the
+  # client secret" reasoning as app.oauth.github above — local dev either
+  # registers its own free OAuth client or doesn't exercise this feature.
+  google-calendar:
+    client-id: ${GOOGLE_CALENDAR_CLIENT_ID:}
+    client-secret: ${GOOGLE_CALENDAR_CLIENT_SECRET:}
+    redirect-uri: ${GOOGLE_CALENDAR_REDIRECT_URI:http://localhost:8080/api/google-calendar/callback}
+    frontend-redirect-uri: ${GOOGLE_CALENDAR_FRONTEND_REDIRECT_URI:http://localhost:5173/settings}
+    # Dev-only fallback, same shape as jwt.secret above: base64 of exactly
+    # 32 bytes, so it's a valid AES-256 key out of the box. Every real
+    # environment must set its own — this is what encrypts the one
+    # long-lived Google credential this app stores at rest.
+    token-encryption-key: ${GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY:ZGV2LW9ubHktaW5zZWN1cmUtMzItYnl0ZS1rZXkhISE=}
   scheduling:
     auto-ghost-cron: ${AUTO_GHOST_CRON:0 0 3 * * *} #cron runs at 3AM
     stale-after: ${AUTO_GHOST_STALE_AFTER:P14D} #14 stale days

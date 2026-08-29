@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { describeApiError } from '@/lib/describe-api-error'
 import { InterviewRoundForm } from '@/features/interviews/interview-round-form'
 import {
+  useCalendarSyncMutation,
   useCreateInterviewRoundMutation,
   useDeleteInterviewRoundMutation,
   useInterviewRoundsQuery,
@@ -35,10 +37,25 @@ export function InterviewRoundsSection({ applicationId }: InterviewRoundsSection
   const createMutation = useCreateInterviewRoundMutation(applicationId)
   const updateMutation = useUpdateInterviewRoundMutation(applicationId)
   const deleteMutation = useDeleteInterviewRoundMutation(applicationId)
+  const calendarSyncMutation = useCalendarSyncMutation(applicationId)
 
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deletingRound, setDeletingRound] = useState<InterviewRound | null>(null)
+  // Tracked per-round rather than read off the mutation itself: only one
+  // round's button should show "Syncing…"/an error at a time, and
+  // TanStack Query's mutation object doesn't carry which round it was for.
+  const [syncingRoundId, setSyncingRoundId] = useState<string | null>(null)
+  const [syncError, setSyncError] = useState<{ roundId: string; message: string } | null>(null)
+
+  function handleCalendarSync(round: InterviewRound) {
+    setSyncingRoundId(round.id)
+    setSyncError(null)
+    calendarSyncMutation.mutate(round.id, {
+      onError: (err) => setSyncError({ roundId: round.id, message: describeApiError(err) }),
+      onSettled: () => setSyncingRoundId(null),
+    })
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -101,6 +118,19 @@ export function InterviewRoundsSection({ applicationId }: InterviewRoundsSection
                         </p>
                       </div>
                       <div className="flex gap-1">
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => handleCalendarSync(round)}
+                          disabled={!round.scheduledAt || syncingRoundId === round.id}
+                          title={round.scheduledAt ? undefined : 'Set a date before syncing to a calendar'}
+                        >
+                          {syncingRoundId === round.id
+                            ? 'Syncing…'
+                            : round.googleEventId
+                              ? 'Update calendar event'
+                              : 'Add to Calendar'}
+                        </Button>
                         <Button size="xs" variant="ghost" onClick={() => setEditingId(round.id)}>
                           Edit
                         </Button>
@@ -109,6 +139,16 @@ export function InterviewRoundsSection({ applicationId }: InterviewRoundsSection
                         </Button>
                       </div>
                     </div>
+
+                    {syncError?.roundId === round.id && (
+                      <p role="alert" className="text-xs text-destructive">
+                        {syncError.message}{' '}
+                        <Link to="/settings" className="underline underline-offset-2">
+                          Check your calendar connection
+                        </Link>
+                        .
+                      </p>
+                    )}
 
                     {round.questionsAsked && (
                       <div>

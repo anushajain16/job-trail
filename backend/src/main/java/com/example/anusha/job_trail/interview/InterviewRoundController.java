@@ -2,6 +2,7 @@ package com.example.anusha.job_trail.interview;
 
 import com.example.anusha.job_trail.auth.security.AuthenticatedUser;
 import com.example.anusha.job_trail.auth.security.CurrentUser;
+import com.example.anusha.job_trail.googlecalendar.CalendarSyncService;
 import com.example.anusha.job_trail.interview.dto.InterviewRoundCreateRequest;
 import com.example.anusha.job_trail.interview.dto.InterviewRoundResponse;
 import com.example.anusha.job_trail.interview.dto.InterviewRoundUpdateRequest;
@@ -34,11 +35,14 @@ public class InterviewRoundController {
 
     private final InterviewRoundService interviewRoundService;
     private final InterviewRoundExportService interviewRoundExportService;
+    private final CalendarSyncService calendarSyncService;
 
     public InterviewRoundController(InterviewRoundService interviewRoundService,
-                                     InterviewRoundExportService interviewRoundExportService) {
+                                     InterviewRoundExportService interviewRoundExportService,
+                                     CalendarSyncService calendarSyncService) {
         this.interviewRoundService = interviewRoundService;
         this.interviewRoundExportService = interviewRoundExportService;
+        this.calendarSyncService = calendarSyncService;
     }
 
     // A literal path — no {id} sibling on this controller to conflict
@@ -73,5 +77,13 @@ public class InterviewRoundController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@CurrentUser AuthenticatedUser currentUser, @PathVariable UUID id) {
         interviewRoundService.delete(id, currentUser.id());
+    }
+
+    // "Add to Calendar" — creates the event the first time, updates the
+    // same event (by its stored google_event_id) on every call after
+    // that, so clicking it again never duplicates. See CalendarSyncService.
+    @PostMapping("/api/interviews/{id}/calendar-sync")
+    public InterviewRoundResponse calendarSync(@CurrentUser AuthenticatedUser currentUser, @PathVariable UUID id) {
+        return calendarSyncService.sync(id, currentUser.id());
     }
 }

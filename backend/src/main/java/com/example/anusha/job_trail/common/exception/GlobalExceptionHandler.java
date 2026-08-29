@@ -5,6 +5,8 @@ import com.example.anusha.job_trail.auth.exception.InvalidRefreshTokenException;
 import com.example.anusha.job_trail.auth.exception.OAuthVerificationException;
 import com.example.anusha.job_trail.document.exception.DocumentTooLargeException;
 import com.example.anusha.job_trail.document.exception.UnsupportedDocumentTypeException;
+import com.example.anusha.job_trail.googlecalendar.exception.GoogleCalendarNotConnectedException;
+import com.example.anusha.job_trail.googlecalendar.exception.GoogleCalendarUnavailableException;
 import com.example.anusha.job_trail.matching.exception.MlServiceUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -112,6 +114,19 @@ public class GlobalExceptionHandler {
     // call with no ml-service to reach has nothing to fall back to.
     @ExceptionHandler(MlServiceUnavailableException.class)
     public ResponseEntity<ErrorResponse> handleMlServiceUnavailable(MlServiceUnavailableException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_GATEWAY, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(GoogleCalendarNotConnectedException.class)
+    public ResponseEntity<ErrorResponse> handleGoogleCalendarNotConnected(GoogleCalendarNotConnectedException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    // See GoogleCalendarUnavailableException's doc comment — same
+    // "nothing to gracefully fall back to" reasoning as
+    // MlServiceUnavailableException below, hence the same 502.
+    @ExceptionHandler(GoogleCalendarUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleGoogleCalendarUnavailable(GoogleCalendarUnavailableException ex, HttpServletRequest request) {
         return build(HttpStatus.BAD_GATEWAY, ex.getMessage(), request);
     }
 

@@ -35,4 +35,9 @@ export const interviewRoundsApi = {
     authFetch<InterviewRound>(`/api/interviews/${id}`, { method: 'PATCH', body: toRequestBody(input) }),
 
   remove: (id: string) => authFetch<null>(`/api/interviews/${id}`, { method: 'DELETE' }),
+
+  // Creates the calendar event the first time, updates that same event on
+  // every call after that (see backend CalendarSyncService) — safe to
+  // call again, never duplicates.
+  calendarSync: (id: string) => authFetch<InterviewRound>(`/api/interviews/${id}/calendar-sync`, { method: 'POST' }),
 }
