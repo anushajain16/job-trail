@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.config import Settings
-from app.deps import get_llm_client, get_settings_dep
+from app.deps import get_llm_client, get_settings_dep, verify_internal_api_key
 from app.schemas import ParsedJobPosting, ParseRequest, ParseResponse
 from app.services.llm_client import LLMClient, LLMError
 from app.services.scraper import ScrapeError, fetch_visible_text
 
-router = APIRouter(prefix="/parse", tags=["parse"])
+router = APIRouter(prefix="/parse", tags=["parse"], dependencies=[Depends(verify_internal_api_key)])
 
 
 @router.post("", response_model=ParseResponse)
