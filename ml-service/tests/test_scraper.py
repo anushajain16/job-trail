@@ -57,3 +57,86 @@ async def test_fetch_visible_text_raises_on_timeout():
 
     with pytest.raises(ScrapeError, match="Timed out"):
         await fetch_visible_text("https://example.com/slow", timeout_seconds=5, max_chars=1000)
+
+
+@respx.mock
+async def test_fetch_visible_text_prepends_company_from_job_posting_json_ld():
+    html = """
+    <html><head>
+      <script type="application/ld+json">
+        {"@context": "https://schema.org", "@type": "JobPosting",
+         "title": "Backend Engineer", "hiringOrganization": {"@type": "Organization", "name": "Acme Corp"}}
+      </script>
+    </head><body><p>Role: Backend Engineer</p></body></html>
+    """
+    respx.get("https://example.com/job").mock(
+        return_value=httpx.Response(200, headers={"content-type": "text/html"}, text=html)
+    )
+
+    text = await fetch_visible_text("https://example.com/job", timeout_seconds=5, max_chars=1000)
+
+    assert text.startswith("Company: Acme Corp\n")
+    assert "Role: Backend Engineer" in text
+
+
+@respx.mock
+async def test_fetch_visible_text_prepends_company_from_json_ld_graph():
+    html = """
+    <html><head>
+      <script type="application/ld+json">
+        {"@graph": [
+          {"@type": "WebPage", "name": "Careers"},
+          {"@type": "JobPosting", "hiringOrganization": {"name": "Graph Co"}}
+        ]}
+      </script>
+    </head><body><p>Role: Data Engineer</p></body></html>
+    """
+    respx.get("https://example.com/graph-job").mock(
+        return_value=httpx.Response(200, headers={"content-type": "text/html"}, text=html)
+    )
+
+    text = await fetch_visible_text("https://example.com/graph-job", timeout_seconds=5, max_chars=1000)
+
+    assert text.startswith("Company: Graph Co\n")
+
+
+@respx.mock
+async def test_fetch_visible_text_falls_back_to_og_site_name():
+    html = """
+    <html><head><meta property="og:site_name" content="Fallback Inc"></head>
+    <body><p>Role: Support Engineer</p></body></html>
+    """
+    respx.get("https://example.com/og-job").mock(
+        return_value=httpx.Response(200, headers={"content-type": "text/html"}, text=html)
+    )
+
+    text = await fetch_visible_text("https://example.com/og-job", timeout_seconds=5, max_chars=1000)
+
+    assert text.startswith("Company: Fallback Inc\n")
+
+
+@respx.mock
+async def test_fetch_visible_text_omits_company_line_when_no_hint_present():
+    respx.get("https://example.com/no-hint").mock(
+        return_value=httpx.Response(200, headers={"content-type": "text/html"}, text="<p>Role: Engineer</p>")
+    )
+
+    text = await fetch_visible_text("https://example.com/no-hint", timeout_seconds=5, max_chars=1000)
+
+    assert not text.startswith("Company:")
+
+
+@respx.mock
+async def test_fetch_visible_text_ignores_malformed_json_ld():
+    html = """
+    <html><head><script type="application/ld+json">not valid json</script></head>
+    <body><p>Role: Engineer</p></body></html>
+    """
+    respx.get("https://example.com/bad-json-ld").mock(
+        return_value=httpx.Response(200, headers={"content-type": "text/html"}, text=html)
+    )
+
+    text = await fetch_visible_text("https://example.com/bad-json-ld", timeout_seconds=5, max_chars=1000)
+
+    assert not text.startswith("Company:")
+    assert "Role: Engineer" in text

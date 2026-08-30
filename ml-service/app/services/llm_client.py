@@ -92,8 +92,17 @@ _SYSTEM_PROMPT = (
 
 
 class OpenAILLMClient(LLMClient):
-    def __init__(self, api_key: str, model: str, timeout_seconds: float = 30.0) -> None:
-        self._client = AsyncOpenAI(api_key=api_key, timeout=timeout_seconds)
+    """Despite the name, this talks to any OpenAI-compatible chat-completions
+    endpoint, not just OpenAI itself — see Settings.openai_base_url. The one
+    thing worth knowing before pointing it elsewhere: the strict json_schema
+    mode this relies on (server-enforced "the response matches this schema,
+    full stop") is an OpenAI-specific guarantee. A compatible provider (e.g.
+    Gemini) may honor it approximately rather than exactly, so a field
+    landing null/mistyped despite being right there in the text is more
+    likely off-OpenAI than on it."""
+
+    def __init__(self, api_key: str, model: str, timeout_seconds: float = 30.0, base_url: str | None = None) -> None:
+        self._client = AsyncOpenAI(api_key=api_key, timeout=timeout_seconds, base_url=base_url)
         self._model = model
 
     async def extract(self, text: str) -> LLMExtraction:
@@ -133,6 +142,12 @@ _SALARY_RANGE_RE = re.compile(
 _CURRENCY_SYMBOLS = {"$": "USD", "€": "EUR", "£": "GBP", "₹": "INR"}
 _EMPLOYMENT_TYPES = ("full-time", "part-time", "contract", "internship", "freelance", "temporary")
 _SENIORITY_LEVELS = ("intern", "junior", "entry-level", "mid-level", "senior", "staff", "principal", "lead")
+# Matches the "Company: X" line scraper.fetch_visible_text prepends when it
+# finds a JobPosting JSON-LD block or og:site_name tag — the one company
+# signal reliable enough to trust without an LLM (see that function's
+# _extract_company_hint). Anchored to the very start of the text: a
+# "Company:" mention buried in the body isn't the same guarantee.
+_COMPANY_HINT_RE = re.compile(r"\A\s*Company:\s*(.+)")
 
 
 def _to_number(raw: str) -> float:
@@ -164,18 +179,27 @@ class StubLLMClient(LLMClient):
         employment_type = next((t for t in _EMPLOYMENT_TYPES if t in lower), None)
         seniority = next((s for s in _SENIORITY_LEVELS if s in lower), None)
 
-        # first non-empty line is a reasonable role/title guess for most
-        # postings and job boards; there's no reliable company heuristic
-        # without site-specific markup, so that field is left null.
-        role = lines[0][:120] if lines else None
+        # There's no reliable way to guess a company name from body text
+        # alone, so this only trusts the explicit "Company: X" line the
+        # scraper prepends from structured markup (see _COMPANY_HINT_RE) —
+        # never a guess, same as the LLM path's own instruction to leave
+        # fields null rather than invent them. Pasted text (no scrape step)
+        # never has this line, so company stays null there, same as before.
+        company_match = _COMPANY_HINT_RE.match(text)
+        company = company_match.group(1).strip()[:255] if company_match else None
+
+        # first non-empty line still not consumed by the company hint above
+        # is a reasonable role/title guess for most postings and job boards.
+        role_lines = lines[1:] if company_match and lines else lines
+        role = role_lines[0][:120] if role_lines else None
 
         found_fields = sum(
-            1 for v in (role, employment_type, seniority, salary_min, currency) if v is not None
+            1 for v in (company, role, employment_type, seniority, salary_min, currency) if v is not None
         ) + (1 if found_skills else 0)
         confidence = round(min(0.6, 0.15 * found_fields), 2)  # heuristic extraction never claims high confidence
 
         return LLMExtraction(
-            company=None,
+            company=company,
             role=role,
             location=None,
             employment_type=employment_type,
@@ -185,7 +209,7 @@ class StubLLMClient(LLMClient):
             currency=currency,
             required_skills=found_skills,
             nice_to_have_skills=[],
-            summary=lines[0][:200] if lines else None,
+            summary=role_lines[0][:200] if role_lines else None,
             confidence=confidence,
         )
 

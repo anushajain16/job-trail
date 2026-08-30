@@ -98,6 +98,12 @@ services:
     environment:
       MLSVC_INTERNAL_API_KEY: ${ML_SERVICE_SHARED_SECRET:-}
       MLSVC_OPENAI_API_KEY: ${MLSVC_OPENAI_API_KEY:-}
+      # Only needed to point at a non-OpenAI, OpenAI-compatible endpoint
+      # (e.g. Gemini) — see ml-service/app/config.py's openai_base_url and
+      # openai_model. Leave both unset to use OpenAI itself with its default
+      # model.
+      MLSVC_OPENAI_BASE_URL: ${MLSVC_OPENAI_BASE_URL:-}
+      MLSVC_OPENAI_MODEL: ${MLSVC_OPENAI_MODEL:-gpt-4o-mini}
     ports:
       - "127.0.0.1:${ML_SERVICE_PORT:-8000}:8000"
     healthcheck:

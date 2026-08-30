@@ -36,10 +36,20 @@ class Settings(BaseSettings):
     # that boundary isn't airtight, e.g. a shared/multi-tenant network.
     internal_api_key: str | None = None
 
-    # --- LLM extraction (/parse) ---
+    # --- LLM extraction (/parse, /profile) ---
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
     openai_timeout_seconds: float = 30.0
+    # None -> the openai package's own default (api.openai.com). Set to any
+    # OpenAI-compatible endpoint to use a different provider through the same
+    # client code — e.g. Gemini's compat layer at
+    # https://generativelanguage.googleapis.com/v1beta/openai/ with an
+    # MLSVC_OPENAI_API_KEY from aistudio.google.com/apikey and
+    # MLSVC_OPENAI_MODEL=gemini-3.6-flash. Structured-output strictness
+    # (the json_schema "strict": true this service relies on) is an OpenAI
+    # feature other providers approximate rather than guarantee — see
+    # llm_client.py's OpenAILLMClient doc comment.
+    openai_base_url: str | None = None
 
     # --- embeddings (/match) ---
     # "sentence-transformer" is the real, semantically-meaningful backend

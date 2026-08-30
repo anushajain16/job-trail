@@ -71,8 +71,11 @@ _SYSTEM_PROMPT = (
 
 
 class OpenAIResumeProfileClient(ResumeProfileClient):
-    def __init__(self, api_key: str, model: str, timeout_seconds: float = 30.0) -> None:
-        self._client = AsyncOpenAI(api_key=api_key, timeout=timeout_seconds)
+    """Same "any OpenAI-compatible endpoint" caveat as llm_client.py's
+    OpenAILLMClient — see Settings.openai_base_url."""
+
+    def __init__(self, api_key: str, model: str, timeout_seconds: float = 30.0, base_url: str | None = None) -> None:
+        self._client = AsyncOpenAI(api_key=api_key, timeout=timeout_seconds, base_url=base_url)
         self._model = model
 
     async def extract(self, resume_text: str) -> ResumeProfileExtraction:

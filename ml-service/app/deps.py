@@ -20,6 +20,7 @@ def get_llm_client() -> LLMClient:
             api_key=settings.openai_api_key,
             model=settings.openai_model,
             timeout_seconds=settings.openai_timeout_seconds,
+            base_url=settings.openai_base_url,
         )
     return StubLLMClient()
 
@@ -32,6 +33,7 @@ def get_resume_profile_client() -> ResumeProfileClient:
             api_key=settings.openai_api_key,
             model=settings.openai_model,
             timeout_seconds=settings.openai_timeout_seconds,
+            base_url=settings.openai_base_url,
         )
     return StubResumeProfileClient()
 
