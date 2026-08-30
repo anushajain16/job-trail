@@ -1,54 +1,46 @@
-import { authFetch } from '@/lib/api-client'
-import type { Application, ApplicationInput, ApplicationListParams, Page } from '@/features/applications/types'
+import { api, requestBlob } from '@/api/client'
+import type {
+  ApplicationCreateRequest,
+  ApplicationResponse,
+  ApplicationUpdateRequest,
+  Page,
+  PageParams,
+  Stage,
+  StatusHistoryResponse,
+  Uuid,
+} from '@/api/types'
 
-function buildQuery(params: Record<string, string | number | undefined>): string {
-  const search = new URLSearchParams()
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined) search.set(key, String(value))
-  }
-  const qs = search.toString()
-  return qs ? `?${qs}` : ''
+export function listApplications(params: PageParams = {}) {
+  return api.get<Page<ApplicationResponse>>('/api/applications', {
+    query: { page: params.page, size: params.size, sort: params.sort },
+  })
 }
 
-/** Trims the form's string fields down to a request body: required fields
- * always included, optional ones only when non-blank (see
- * ApplicationInput's doc comment for why — the API can't null a field via
- * PATCH, so an empty string would overwrite rather than clear it). Used
- * for both create and update — ApplicationUpdateRequest accepts the same
- * shape as ApplicationCreateRequest minus the @NotBlank on company/role. */
-function toRequestBody(input: ApplicationInput): Record<string, unknown> {
-  const body: Record<string, unknown> = {
-    company: input.company.trim(),
-    role: input.role.trim(),
-  }
-  const optional: Record<string, string> = {
-    location: input.location,
-    link: input.link,
-    source: input.source,
-    notes: input.notes,
-    jobDescriptionText: input.jobDescriptionText,
-    deadline: input.deadline,
-  }
-  for (const [key, value] of Object.entries(optional)) {
-    const trimmed = value.trim()
-    if (trimmed) body[key] = trimmed
-  }
-  if (input.salaryMin.trim()) body.salaryMin = Number(input.salaryMin)
-  if (input.salaryMax.trim()) body.salaryMax = Number(input.salaryMax)
-  return body
+export function getApplication(id: Uuid) {
+  return api.get<ApplicationResponse>(`/api/applications/${id}`)
 }
 
-export const applicationsApi = {
-  list: (params: ApplicationListParams) =>
-    authFetch<Page<Application>>(`/api/applications${buildQuery({ page: params.page, size: params.size })}`),
+export function createApplication(body: ApplicationCreateRequest) {
+  return api.post<ApplicationResponse>('/api/applications', body)
+}
 
-  get: (id: string) => authFetch<Application>(`/api/applications/${id}`),
+export function updateApplication(id: Uuid, body: ApplicationUpdateRequest) {
+  return api.patch<ApplicationResponse>(`/api/applications/${id}`, body)
+}
 
-  create: (input: ApplicationInput) =>
-    authFetch<Application>('/api/applications', { method: 'POST', body: toRequestBody(input) }),
+export function deleteApplication(id: Uuid) {
+  return api.delete(`/api/applications/${id}`)
+}
 
-  update: (id: string, input: ApplicationInput) =>
-    authFetch<Application>(`/api/applications/${id}`, { method: 'PATCH', body: toRequestBody(input) }),
+/** Backend rejects a change to the stage it is already in (400). */
+export function changeStage(id: Uuid, stage: Stage) {
+  return api.patch<ApplicationResponse>(`/api/applications/${id}/stage`, { stage })
+}
 
-  remove: (id: string) => authFetch<null>(`/api/applications/${id}`, { method: 'DELETE' }),
+export function getStatusHistory(id: Uuid) {
+  return api.get<StatusHistoryResponse[]>(`/api/applications/${id}/history`)
+}
+
+export function exportApplicationsCsv() {
+  return requestBlob('/api/applications/export')
 }

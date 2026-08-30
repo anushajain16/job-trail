@@ -1,51 +1,30 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import { BackendStatusBadge } from '@/components/layout/backend-status-badge'
-import { UserMenu } from '@/components/layout/user-menu'
-import { cn } from '@/lib/utils'
+import { Outlet } from 'react-router-dom'
+import { BackendStatusBadge } from './backend-status-badge'
+import { NavBar, type NavItem } from './nav-bar'
+import { UserMenu } from './user-menu'
 
-const NAV_LINKS = [
-  { to: '/', label: 'Dashboard', end: true },
-  { to: '/map', label: 'Map', end: false },
-  { to: '/applications', label: 'Applications', end: false },
-  { to: '/analytics', label: 'Analytics', end: false },
-  { to: '/settings', label: 'Settings', end: false },
+const NAV_ITEMS: NavItem[] = [
+  { to: '/map', label: 'Transit Map' },
+  { to: '/applications', label: 'Applications' },
+  { to: '/documents', label: 'Documents' },
+  { to: '/analytics', label: 'Analytics' },
+  { to: '/settings', label: 'Settings' },
 ]
 
-/** Shell every route renders inside: header (brand, nav, backend status)
- * over a content area. Nothing here is route-specific — that's what
- * `<Outlet />` is for. */
+/** The signed-in frame: nav rule on top, page content on warm paper. */
 export function AppLayout() {
   return (
-    <div className="min-h-svh bg-background text-foreground">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-6">
-            <span className="text-lg font-semibold tracking-tight">JobTrail</span>
-            <nav className="flex items-center gap-4">
-              {NAV_LINKS.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  end={link.end}
-                  className={({ isActive }) =>
-                    cn(
-                      'text-sm text-muted-foreground transition-colors hover:text-foreground',
-                      isActive && 'font-medium text-foreground',
-                    )
-                  }
-                >
-                  {link.label}
-                </NavLink>
-              ))}
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <BackendStatusBadge />
+    <div className="flex min-h-full flex-col bg-paper">
+      <NavBar
+        items={NAV_ITEMS}
+        aside={
+          <>
+            <BackendStatusBadge className="hidden sm:flex" />
             <UserMenu />
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-5xl px-6 py-8">
+          </>
+        }
+      />
+      <main className="flex-1 px-8 py-11 sm:px-13">
         <Outlet />
       </main>
     </div>

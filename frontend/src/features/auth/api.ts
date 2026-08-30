@@ -1,37 +1,46 @@
-import { apiFetch } from '@/lib/api-client'
-import type { AuthTokens } from '@/lib/auth-tokens'
+import { api } from '@/api/client'
+import { clearTokens, getRefreshToken, setTokens } from '@/api/tokens'
+import type { AuthResponse, CurrentUser, OAuthProvider } from '@/api/types'
 
-// Mirrors backend/.../auth/dto/AuthResponse.java — tokenType is always
-// "Bearer" and unused here (authFetch hardcodes the scheme itself).
-interface AuthResponse extends AuthTokens {
-  tokenType: string
+export interface Credentials {
+  email: string
+  password: string
 }
 
-export interface CurrentUser {
-  id: string
-  email: string
+/** Signup and login both return a token pair — store it before resolving. */
+async function authenticate(path: string, body: unknown): Promise<AuthResponse> {
+  const auth = await api.post<AuthResponse>(path, body, { anonymous: true })
+  setTokens(auth)
+  return auth
+}
+
+export function signup(credentials: Credentials) {
+  return authenticate('/api/auth/signup', credentials)
+}
+
+export function login(credentials: Credentials) {
+  return authenticate('/api/auth/login', credentials)
 }
 
 /**
- * `/api/auth/*` calls, unauthenticated (signup/login/refresh are public
- * routes — see backend's SecurityConfig — and `me` takes its own token
- * explicitly since it's called mid-login, before AuthProvider has
- * committed the new session to auth-tokens.ts). None of this goes through
- * `authFetch` — that's for already-authenticated feature calls.
+ * `token` is provider-shaped: a Google Identity Services ID token for
+ * GOOGLE, GitHub's authorization `code` for GITHUB (the backend does that
+ * exchange server-side, since it needs the client secret).
  */
-export const authApi = {
-  signup: (email: string, password: string) =>
-    apiFetch<AuthResponse>('/api/auth/signup', { method: 'POST', body: { email, password } }),
+export function oauthLogin(provider: OAuthProvider, token: string) {
+  return authenticate(`/api/auth/oauth/${provider}`, { token })
+}
 
-  login: (email: string, password: string) =>
-    apiFetch<AuthResponse>('/api/auth/login', { method: 'POST', body: { email, password } }),
+export function fetchMe() {
+  return api.get<CurrentUser>('/api/auth/me')
+}
 
-  refresh: (refreshToken: string) =>
-    apiFetch<AuthResponse>('/api/auth/refresh', { method: 'POST', body: { refreshToken } }),
-
-  logout: (refreshToken: string) =>
-    apiFetch<null>('/api/auth/logout', { method: 'POST', body: { refreshToken } }),
-
-  me: (accessToken: string) =>
-    apiFetch<CurrentUser>('/api/auth/me', { headers: { Authorization: `Bearer ${accessToken}` } }),
+/** Best-effort revoke — local tokens are cleared either way. */
+export async function logout() {
+  const refreshToken = getRefreshToken()
+  try {
+    if (refreshToken) await api.post<void>('/api/auth/logout', { refreshToken }, { anonymous: true })
+  } finally {
+    clearTokens()
+  }
 }

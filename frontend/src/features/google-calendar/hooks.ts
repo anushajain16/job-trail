@@ -1,24 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { googleCalendarApi } from '@/features/google-calendar/api'
+import { queryKeys } from '@/api/query-keys'
+import * as calendarApi from './api'
 
-const googleCalendarKeys = {
-  status: ['google-calendar', 'status'] as const,
-}
-
-export function useGoogleCalendarStatusQuery() {
+export function useCalendarConnection() {
   return useQuery({
-    queryKey: googleCalendarKeys.status,
-    queryFn: googleCalendarApi.status,
+    queryKey: queryKeys.googleCalendar.connection,
+    queryFn: calendarApi.getCalendarConnection,
   })
 }
 
-export function useDisconnectGoogleCalendarMutation() {
-  const queryClient = useQueryClient()
+export function useConnectCalendar() {
+  return useMutation({ mutationFn: calendarApi.startCalendarConnect })
+}
 
+export function useDisconnectCalendar() {
+  const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: googleCalendarApi.disconnect,
-    onSuccess: () => {
-      queryClient.setQueryData(googleCalendarKeys.status, { connected: false })
-    },
+    mutationFn: calendarApi.disconnectCalendar,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.googleCalendar.connection }),
   })
 }

@@ -1,45 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { matchApi, resumeProfileApi } from '@/features/matching/api'
-import { patchCachedApplication } from '@/features/applications/hooks'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/api/query-keys'
+import type { Uuid } from '@/api/types'
+import { scoreApplication } from './api'
 
-const resumeProfileKeys = {
-  current: ['resume-profile'] as const,
-}
-
-export function useResumeProfileQuery() {
-  return useQuery({
-    queryKey: resumeProfileKeys.current,
-    queryFn: resumeProfileApi.get,
-    retry: false, // a 404 ("no profile yet") is an expected, common state — don't retry it
-  })
-}
-
-export function useParseResumeProfileMutation() {
+export function useScoreApplication() {
   const queryClient = useQueryClient()
-
   return useMutation({
-    mutationFn: resumeProfileApi.parse,
-    onSuccess: (profile) => {
-      queryClient.setQueryData(resumeProfileKeys.current, profile)
-    },
-  })
-}
-
-export function useScoreApplicationMutation() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (applicationId: string) => matchApi.score(applicationId),
-    // No optimistic step: there's nothing to guess ahead of a match score
-    // — patch the cache with the real result once it comes back.
-    onSuccess: (result, applicationId) => {
-      patchCachedApplication(queryClient, applicationId, (application) => ({
-        ...application,
-        matchScore: result.matchScore,
-        matchedSkills: result.matchedSkills,
-        missingSkills: result.missingSkills,
-        scoredAt: result.scoredAt,
-      }))
+    mutationFn: (id: Uuid) => scoreApplication(id),
+    onSuccess: (_result, id) => {
+      // The score is stored on the application itself, so the detail and
+      // list caches both go stale.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.applications.detail(id) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.applications.all })
     },
   })
 }

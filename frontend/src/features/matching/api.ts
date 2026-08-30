@@ -1,38 +1,11 @@
-import { authFetch } from '@/lib/api-client'
+import { api } from '@/api/client'
+import type { MatchScoreResponse, Uuid } from '@/api/types'
 
-// Mirrors backend/.../matching/dto/MlResumeProfile.java.
-export interface ResumeProfile {
-  skills: string[]
-  yearsExperience: number | null
-  roles: string[]
-  seniority: string | null
-  summary: string | null
-}
-
-// Mirrors backend/.../matching/dto/ResumeProfileResponse.java.
-export interface ResumeProfileResult {
-  id: string
-  sourceDocumentId: string
-  profile: ResumeProfile
-  confidence: number
-  parsedAt: string
-}
-
-// Mirrors backend/.../matching/dto/MatchScoreResponse.java.
-export interface MatchScoreResult {
-  matchScore: number
-  matchedSkills: string[]
-  missingSkills: string[]
-  scoredAt: string
-  cached: boolean
-}
-
-export const resumeProfileApi = {
-  parse: () => authFetch<ResumeProfileResult>('/api/resume-profile/parse', { method: 'POST' }),
-  get: () => authFetch<ResumeProfileResult>('/api/resume-profile'),
-}
-
-export const matchApi = {
-  score: (applicationId: string) =>
-    authFetch<MatchScoreResult>(`/api/applications/${applicationId}/score`, { method: 'POST' }),
+/**
+ * 400 if the application has no `jobDescriptionText`, 404 if no résumé
+ * profile has been parsed, 502 if ml-service is unreachable — there is no
+ * fallback for a score, unlike job-posting parsing.
+ */
+export function scoreApplication(id: Uuid) {
+  return api.post<MatchScoreResponse>(`/api/applications/${id}/score`)
 }

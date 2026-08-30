@@ -1,14 +1,15 @@
-import { authFetch } from '@/lib/api-client'
-import type { GoogleCalendarConnectResult, GoogleCalendarConnectionStatus } from '@/features/google-calendar/types'
+import { api } from '@/api/client'
+import type { CalendarConnectResponse, CalendarConnectionResponse } from '@/api/types'
 
-export const googleCalendarApi = {
-  status: () => authFetch<GoogleCalendarConnectionStatus>('/api/google-calendar/connection'),
+/** Returns Google's consent URL — the browser navigates there full-page. */
+export function startCalendarConnect() {
+  return api.post<CalendarConnectResponse>('/api/google-calendar/connect')
+}
 
-  // Returns the URL to navigate the whole browser to — Google's own
-  // consent screen has to render, which isn't something this fetch call
-  // itself can do. See SettingsPage for the actual `window.location`
-  // navigation.
-  connect: () => authFetch<GoogleCalendarConnectResult>('/api/google-calendar/connect', { method: 'POST' }),
+export function getCalendarConnection() {
+  return api.get<CalendarConnectionResponse>('/api/google-calendar/connection')
+}
 
-  disconnect: () => authFetch<null>('/api/google-calendar/connection', { method: 'DELETE' }),
+export function disconnectCalendar() {
+  return api.delete('/api/google-calendar/connection')
 }

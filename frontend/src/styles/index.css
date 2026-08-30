@@ -1,0 +1,105 @@
+@import 'tailwindcss';
+
+/* ── Design tokens ──────────────────────────────────────────────────────
+   Vignelli/Beck transit-diagram feel: warm paper, flat ink, no shadows,
+   no gradients, no glass. Everything in the app pulls from these names —
+   never hard-code a hex outside this block.
+   ---------------------------------------------------------------------- */
+@theme {
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --default-font-family: var(--font-mono);
+
+  /* Surfaces & ink */
+  --color-paper: #f4f1ea;
+  --color-paper-raised: #ffffff;
+  --color-ink: #26241f;
+  --color-ink-soft: #55534c;
+  --color-muted: #8a867b;
+  --color-grey: #b4b2a9;
+  --color-rule: #ddd8cc;
+  --color-rule-soft: #cfcbbf;
+
+  /* Line palette — one per application line on the map */
+  --color-line-coral: #d85a30;
+  --color-line-teal: #1d9e75;
+  --color-line-blue: #378add;
+  --color-line-purple: #7f77dd;
+  --color-line-pink: #d4537e;
+  --color-line-amber: #ba7517;
+
+  /* Semantic */
+  --color-danger: #d85a30;
+  --color-success: #1d9e75;
+
+  /* Tracking used by the signage type scale */
+  --tracking-signage: 0.08em;
+  --tracking-title: 0.14em;
+  --tracking-label: 0.12em;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: var(--color-ink);
+    text-decoration: underline;
+  }
+
+  a:hover {
+    color: var(--color-line-coral);
+  }
+
+  /* Flat focus ring — a squared outline, never a glow. */
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+
+  ::placeholder {
+    color: var(--color-grey);
+  }
+
+  ::selection {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+}
+
+@layer components {
+  /* Signage type scale — the three label sizes used across the whole app. */
+  .type-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-title);
+  }
+
+  .type-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+  }
+
+  .type-meta {
+    font-size: 10px;
+    letter-spacing: var(--tracking-signage);
+    color: var(--color-muted);
+  }
+}
+
+/* Thin, squared scrollbars — printed-diagram chrome, not OS chrome. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-rule-soft) transparent;
+}

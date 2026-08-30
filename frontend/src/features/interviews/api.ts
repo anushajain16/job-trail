@@ -1,43 +1,37 @@
-import { authFetch } from '@/lib/api-client'
-import type { InterviewRound, InterviewRoundInput } from '@/features/interviews/types'
+import { api, requestBlob } from '@/api/client'
+import type {
+  InterviewRoundCreateRequest,
+  InterviewRoundResponse,
+  InterviewRoundUpdateRequest,
+  Uuid,
+} from '@/api/types'
 
-/** Mirrors applications/api.ts's toRequestBody: roundType is the only
- * required field, everything else is included only when non-blank —
- * InterviewRoundUpdateRequest has no way to null a field via PATCH. */
-function toRequestBody(input: InterviewRoundInput): Record<string, unknown> {
-  const body: Record<string, unknown> = { roundType: input.roundType.trim() }
-  const optional: Record<string, string> = {
-    interviewerName: input.interviewerName,
-    questionsAsked: input.questionsAsked,
-    notes: input.notes,
-    reflection: input.reflection,
-  }
-  for (const [key, value] of Object.entries(optional)) {
-    const trimmed = value.trim()
-    if (trimmed) body[key] = trimmed
-  }
-  // datetime-local ("2026-09-05T20:30") has no timezone — treated as local
-  // time and converted to the instant the backend expects.
-  if (input.scheduledAt.trim()) body.scheduledAt = new Date(input.scheduledAt).toISOString()
-  return body
+export function listInterviewRounds(applicationId: Uuid) {
+  return api.get<InterviewRoundResponse[]>(`/api/applications/${applicationId}/interviews`)
 }
 
-export const interviewRoundsApi = {
-  list: (applicationId: string) => authFetch<InterviewRound[]>(`/api/applications/${applicationId}/interviews`),
+export function createInterviewRound(applicationId: Uuid, body: InterviewRoundCreateRequest) {
+  return api.post<InterviewRoundResponse>(`/api/applications/${applicationId}/interviews`, body)
+}
 
-  create: (applicationId: string, input: InterviewRoundInput) =>
-    authFetch<InterviewRound>(`/api/applications/${applicationId}/interviews`, {
-      method: 'POST',
-      body: toRequestBody(input),
-    }),
+/** Flat by round id — the owning application is implied. */
+export function updateInterviewRound(id: Uuid, body: InterviewRoundUpdateRequest) {
+  return api.patch<InterviewRoundResponse>(`/api/interviews/${id}`, body)
+}
 
-  update: (id: string, input: InterviewRoundInput) =>
-    authFetch<InterviewRound>(`/api/interviews/${id}`, { method: 'PATCH', body: toRequestBody(input) }),
+export function deleteInterviewRound(id: Uuid) {
+  return api.delete(`/api/interviews/${id}`)
+}
 
-  remove: (id: string) => authFetch<null>(`/api/interviews/${id}`, { method: 'DELETE' }),
+/**
+ * Creates the Google Calendar event on the first call and updates the same
+ * event on every call after (by stored `googleEventId`), so re-clicking
+ * never duplicates. 409 when Google Calendar is not connected.
+ */
+export function syncInterviewToCalendar(id: Uuid) {
+  return api.post<InterviewRoundResponse>(`/api/interviews/${id}/calendar-sync`)
+}
 
-  // Creates the calendar event the first time, updates that same event on
-  // every call after that (see backend CalendarSyncService) — safe to
-  // call again, never duplicates.
-  calendarSync: (id: string) => authFetch<InterviewRound>(`/api/interviews/${id}/calendar-sync`, { method: 'POST' }),
+export function exportInterviewsCsv() {
+  return requestBlob('/api/interviews/export')
 }

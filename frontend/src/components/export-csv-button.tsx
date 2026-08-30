@@ -1,46 +1,39 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { authFetchFile } from '@/lib/api-client'
-import { describeApiError } from '@/lib/describe-api-error'
-import { downloadFile } from '@/lib/download-file'
+import { saveBlob } from '@/api/client'
+import { Button, type ButtonProps } from '@/components/ui/button'
+import { useToast } from '@/components/ui/toast'
 
-interface ExportCsvButtonProps {
-  path: string
-  label: string
-  pendingLabel: string
+export interface ExportCsvButtonProps extends Omit<ButtonProps, 'onClick' | 'loading'> {
+  /** Fetcher returning the streamed file and its server-supplied name. */
+  fetcher: () => Promise<{ blob: Blob; filename: string }>
+  label?: string
 }
 
-/** Hits a GET /export endpoint and saves the CSV it streams back. No
- * export-specific state to manage beyond "is a download in flight right
- * now" — there's nothing to cache, so this doesn't go through TanStack
- * Query, just a plain fetch-and-save on click. */
-export function ExportCsvButton({ path, label, pendingLabel }: ExportCsvButtonProps) {
-  const [isPending, setIsPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+/**
+ * CSV download. The export endpoints need an Authorization header, so a
+ * plain `<a href>` cannot fetch them — pull the blob, then hand it to the
+ * browser. Shared by application and interview exports.
+ */
+export function ExportCsvButton({ fetcher, label = 'Export CSV', ...props }: ExportCsvButtonProps) {
+  const { notifyError, notify } = useToast()
+  const [busy, setBusy] = useState(false)
 
-  async function handleClick() {
-    setIsPending(true)
-    setError(null)
+  const run = async () => {
+    setBusy(true)
     try {
-      const { blob, filename } = await authFetchFile(path)
-      downloadFile(blob, filename)
-    } catch (err) {
-      setError(describeApiError(err))
+      const { blob, filename } = await fetcher()
+      saveBlob(blob, filename)
+      notify('Export downloaded.', 'success')
+    } catch (error) {
+      notifyError(error)
     } finally {
-      setIsPending(false)
+      setBusy(false)
     }
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <Button variant="outline" onClick={handleClick} disabled={isPending}>
-        {isPending ? pendingLabel : label}
-      </Button>
-      {error && (
-        <p role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
-      )}
-    </div>
+    <Button size="sm" loading={busy} onClick={run} {...props}>
+      {label}
+    </Button>
   )
 }

@@ -1,20 +1,22 @@
 import { useQuery } from '@tanstack/react-query'
-import { analyticsApi } from '@/features/analytics/api'
+import { queryKeys } from '@/api/query-keys'
+import { analyticsApi } from './api'
 
-const analyticsKeys = {
-  funnel: ['analytics', 'funnel'] as const,
-  conversion: ['analytics', 'conversion'] as const,
-  timeInStage: ['analytics', 'time-in-stage'] as const,
+export function useFunnel() {
+  return useQuery({ queryKey: queryKeys.analytics.funnel, queryFn: analyticsApi.funnel })
 }
 
-export function useFunnelQuery() {
-  return useQuery({ queryKey: analyticsKeys.funnel, queryFn: analyticsApi.funnel })
+export function useConversion() {
+  return useQuery({ queryKey: queryKeys.analytics.conversion, queryFn: analyticsApi.conversion })
 }
 
-export function useConversionQuery() {
-  return useQuery({ queryKey: analyticsKeys.conversion, queryFn: analyticsApi.conversion })
+export function useTimeInStage() {
+  return useQuery({ queryKey: queryKeys.analytics.timeInStage, queryFn: analyticsApi.timeInStage })
 }
 
-export function useTimeInStageQuery() {
-  return useQuery({ queryKey: analyticsKeys.timeInStage, queryFn: analyticsApi.timeInStage })
+export function useResumePerformance() {
+  return useQuery({
+    queryKey: queryKeys.analytics.resumePerformance,
+    queryFn: analyticsApi.resumePerformance,
+  })
 }

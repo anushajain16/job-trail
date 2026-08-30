@@ -1,210 +1,174 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ApiError } from '@/api/client'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { describeApiError } from '@/lib/describe-api-error'
-import { InterviewRoundForm } from '@/features/interviews/interview-round-form'
-import {
-  useCalendarSyncMutation,
-  useCreateInterviewRoundMutation,
-  useDeleteInterviewRoundMutation,
-  useInterviewRoundsQuery,
-  useUpdateInterviewRoundMutation,
-} from '@/features/interviews/hooks'
-import { EMPTY_INTERVIEW_ROUND_INPUT, interviewRoundToInput, type InterviewRound } from '@/features/interviews/types'
+import { ConfirmDialog } from '@/components/ui/dialog'
+import { ErrorState, TrackLoader } from '@/components/ui/feedback'
+import { Panel, SectionHeading } from '@/components/ui/panel'
+import { useToast } from '@/components/ui/toast'
+import { formatBoardDateTime } from '@/lib/format'
+import { LINE_COLORS } from '@/lib/design'
+import type { InterviewRoundResponse, Uuid } from '@/api/types'
+import { useDeleteInterviewRound, useInterviewRounds, useSyncInterviewToCalendar } from './hooks'
+import { InterviewFormDialog } from './interview-form'
 
-interface InterviewRoundsSectionProps {
-  applicationId: string
+function RoundNote({ label, body }: { label: string; body: string | null }) {
+  if (!body) return null
+  return (
+    <div>
+      <p className="type-meta mb-1">{label}</p>
+      <p className="font-mono text-[10px] leading-[1.8] tracking-[0.02em] whitespace-pre-wrap text-ink-soft">
+        {body}
+      </p>
+    </div>
+  )
 }
 
-// Prep-tracker section for the application detail view: every round
-// logged against this application, chronological, each editable in place
-// (not append-only like status history — see the interview package's
-// package-info). Add/edit both use the same InterviewRoundForm, toggled
-// by which round (if any) is currently being edited.
-export function InterviewRoundsSection({ applicationId }: InterviewRoundsSectionProps) {
-  const { data: rounds, isPending } = useInterviewRoundsQuery(applicationId)
-  const createMutation = useCreateInterviewRoundMutation(applicationId)
-  const updateMutation = useUpdateInterviewRoundMutation(applicationId)
-  const deleteMutation = useDeleteInterviewRoundMutation(applicationId)
-  const calendarSyncMutation = useCalendarSyncMutation(applicationId)
+function RoundCard({
+  round,
+  applicationId,
+  onEdit,
+  onDelete,
+}: {
+  round: InterviewRoundResponse
+  applicationId: Uuid
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const sync = useSyncInterviewToCalendar(applicationId)
+  const { notify, notifyError } = useToast()
+  const synced = Boolean(round.googleEventId)
 
-  const [isAdding, setIsAdding] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [deletingRound, setDeletingRound] = useState<InterviewRound | null>(null)
-  // Tracked per-round rather than read off the mutation itself: only one
-  // round's button should show "Syncing…"/an error at a time, and
-  // TanStack Query's mutation object doesn't carry which round it was for.
-  const [syncingRoundId, setSyncingRoundId] = useState<string | null>(null)
-  const [syncError, setSyncError] = useState<{ roundId: string; message: string } | null>(null)
-
-  function handleCalendarSync(round: InterviewRound) {
-    setSyncingRoundId(round.id)
-    setSyncError(null)
-    calendarSyncMutation.mutate(round.id, {
-      onError: (err) => setSyncError({ roundId: round.id, message: describeApiError(err) }),
-      onSettled: () => setSyncingRoundId(null),
-    })
+  const runSync = async () => {
+    try {
+      await sync.mutateAsync(round.id)
+      notify(synced ? 'Calendar event updated.' : 'Added to Google Calendar.', 'success')
+    } catch (error) {
+      // 409 is the one actionable failure: Calendar simply isn't connected.
+      if (error instanceof ApiError && error.isConflict) {
+        notify('Connect Google Calendar in Settings first.', 'error')
+        return
+      }
+      notifyError(error)
+    }
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground">Interview rounds</p>
-        {!isAdding && (
-          <Button size="sm" variant="outline" onClick={() => setIsAdding(true)}>
-            Add round
-          </Button>
-        )}
+    <Panel className="flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-[11px] font-semibold tracking-[0.05em] uppercase text-ink">
+            {round.roundType}
+          </p>
+          <p className="type-meta mt-1">
+            {formatBoardDateTime(round.scheduledAt)}
+            {round.interviewerName ? ` · ${round.interviewerName}` : ''}
+          </p>
+        </div>
+        {synced && <Badge color={LINE_COLORS[1]}>ON CALENDAR</Badge>}
       </div>
 
-      {isAdding && (
-        <Card size="sm">
-          <CardContent>
-            <InterviewRoundForm
-              initialValues={EMPTY_INTERVIEW_ROUND_INPUT}
-              submitLabel="Add round"
-              pendingLabel="Adding…"
-              isPending={createMutation.isPending}
-              submitError={createMutation.isError ? describeApiError(createMutation.error) : undefined}
-              onSubmit={(input) => createMutation.mutate(input, { onSuccess: () => setIsAdding(false) })}
-              onCancel={() => setIsAdding(false)}
-            />
-          </CardContent>
-        </Card>
-      )}
+      <RoundNote label="QUESTIONS" body={round.questionsAsked} />
+      <RoundNote label="NOTES" body={round.notes} />
+      <RoundNote label="REFLECTION" body={round.reflection} />
 
-      {isPending ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : rounds && rounds.length > 0 ? (
-        <ol className="flex flex-col gap-3">
-          {rounds.map((round) =>
-            editingId === round.id ? (
-              <Card key={round.id} size="sm">
-                <CardContent>
-                  <InterviewRoundForm
-                    initialValues={interviewRoundToInput(round)}
-                    submitLabel="Save"
-                    pendingLabel="Saving…"
-                    isPending={updateMutation.isPending}
-                    submitError={updateMutation.isError ? describeApiError(updateMutation.error) : undefined}
-                    onSubmit={(input) =>
-                      updateMutation.mutate({ id: round.id, input }, { onSuccess: () => setEditingId(null) })
-                    }
-                    onCancel={() => setEditingId(null)}
-                  />
-                </CardContent>
-              </Card>
-            ) : (
-              <li key={round.id}>
-                <Card size="sm">
-                  <CardContent className="flex flex-col gap-2">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-medium">{round.roundType}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {round.scheduledAt ? new Date(round.scheduledAt).toLocaleString() : 'No date set'}
-                          {round.interviewerName ? ` · ${round.interviewerName}` : ''}
-                        </p>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          onClick={() => handleCalendarSync(round)}
-                          disabled={!round.scheduledAt || syncingRoundId === round.id}
-                          title={round.scheduledAt ? undefined : 'Set a date before syncing to a calendar'}
-                        >
-                          {syncingRoundId === round.id
-                            ? 'Syncing…'
-                            : round.googleEventId
-                              ? 'Update calendar event'
-                              : 'Add to Calendar'}
-                        </Button>
-                        <Button size="xs" variant="ghost" onClick={() => setEditingId(round.id)}>
-                          Edit
-                        </Button>
-                        <Button size="xs" variant="ghost" onClick={() => setDeletingRound(round)}>
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
+      <div className="flex flex-wrap gap-2 border-t border-rule pt-3">
+        <Button
+          size="sm"
+          loading={sync.isPending}
+          disabled={!round.scheduledAt}
+          onClick={runSync}
+          title={round.scheduledAt ? undefined : 'Set a scheduled time first'}
+        >
+          {synced ? 'Update calendar' : 'Add to calendar'}
+        </Button>
+        <Button size="sm" onClick={onEdit}>
+          Edit
+        </Button>
+        <Button size="sm" variant="danger" onClick={onDelete}>
+          Delete
+        </Button>
+      </div>
+    </Panel>
+  )
+}
 
-                    {syncError?.roundId === round.id && (
-                      <p role="alert" className="text-xs text-destructive">
-                        {syncError.message}{' '}
-                        <Link to="/settings" className="underline underline-offset-2">
-                          Check your calendar connection
-                        </Link>
-                        .
-                      </p>
-                    )}
+/** Per-round prep tracking, mounted inside the application drawer. */
+export function InterviewRoundsSection({ applicationId }: { applicationId: Uuid }) {
+  const { data: rounds, isLoading, isError, error, refetch } = useInterviewRounds(applicationId)
+  const remove = useDeleteInterviewRound(applicationId)
+  const { notify, notifyError } = useToast()
 
-                    {round.questionsAsked && (
-                      <div>
-                        <p className="text-xs text-muted-foreground">Questions asked</p>
-                        <p className="whitespace-pre-wrap text-sm">{round.questionsAsked}</p>
-                      </div>
-                    )}
+  const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<InterviewRoundResponse | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<InterviewRoundResponse | null>(null)
 
-                    {round.notes && (
-                      <div>
-                        <p className="text-xs text-muted-foreground">Notes</p>
-                        <p className="whitespace-pre-wrap text-sm">{round.notes}</p>
-                      </div>
-                    )}
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    try {
+      await remove.mutateAsync(pendingDelete.id)
+      notify('Round deleted.', 'success')
+      setPendingDelete(null)
+    } catch (caught) {
+      notifyError(caught)
+    }
+  }
 
-                    {round.reflection && (
-                      // The prominent field — bordered and set off from the
-                      // rest of the round, since it's the part worth
-                      // re-reading before the next interview.
-                      <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5">
-                        <p className="text-xs font-semibold text-primary">Reflection</p>
-                        <p className="whitespace-pre-wrap text-sm">{round.reflection}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </li>
-            ),
-          )}
-        </ol>
-      ) : (
-        !isAdding && <p className="text-sm text-muted-foreground">No rounds logged yet.</p>
-      )}
+  const ordered = [...(rounds ?? [])].sort((a, b) =>
+    (a.scheduledAt ?? a.createdAt).localeCompare(b.scheduledAt ?? b.createdAt),
+  )
 
-      <AlertDialog open={deletingRound !== null} onOpenChange={(open) => !open && setDeletingRound(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this round?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deletingRound && <>This removes the "{deletingRound.roundType}" round, including its notes and reflection. This can't be undone.</>}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (!deletingRound) return
-                deleteMutation.mutate(deletingRound.id, { onSuccess: () => setDeletingRound(null) })
-              }}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+  return (
+    <section>
+      <SectionHeading
+        aside={
+          <Button size="sm" onClick={() => setCreating(true)}>
+            Add round
+          </Button>
+        }
+      >
+        Interview rounds{rounds ? ` · ${rounds.length}` : ''}
+      </SectionHeading>
+
+      <div className="mt-3 flex flex-col gap-3">
+        {isLoading && <TrackLoader label="LOADING ROUNDS" />}
+        {isError && <ErrorState error={error} onRetry={() => void refetch()} />}
+        {rounds && rounds.length === 0 && (
+          <p className="font-mono text-[10px] leading-relaxed tracking-[0.04em] text-muted">
+            No rounds recorded. Add one to track questions, notes and reflections.
+          </p>
+        )}
+        {ordered.map((round) => (
+          <RoundCard
+            key={round.id}
+            round={round}
+            applicationId={applicationId}
+            onEdit={() => setEditing(round)}
+            onDelete={() => setPendingDelete(round)}
+          />
+        ))}
+      </div>
+
+      <InterviewFormDialog
+        open={creating}
+        applicationId={applicationId}
+        onClose={() => setCreating(false)}
+      />
+      <InterviewFormDialog
+        open={editing !== null}
+        round={editing}
+        applicationId={applicationId}
+        onClose={() => setEditing(null)}
+      />
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
+        loading={remove.isPending}
+        title="Delete this round?"
+        description="Its notes and reflection are removed. Any calendar event stays on Google Calendar."
+        confirmLabel="Delete"
+      />
+    </section>
   )
 }

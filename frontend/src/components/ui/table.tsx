@@ -1,114 +1,90 @@
-import * as React from "react"
+import type { ReactNode } from 'react'
+import { cn } from '@/lib/cn'
 
-import { cn } from "@/lib/utils"
-
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+/**
+ * Timetable-style table primitives: ruled rows, letterspaced uppercase
+ * headers, no zebra striping.
+ */
+export function Table({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div
-      data-slot="table-container"
-      className="relative w-full overflow-x-auto"
-    >
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
+    <div className="w-full overflow-x-auto">
+      <table className={cn('w-full border-collapse text-left', className)}>{children}</table>
     </div>
   )
 }
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
-  return (
-    <thead
-      data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
-      {...props}
-    />
-  )
+export function THead({ children }: { children: ReactNode }) {
+  return <thead className="border-b-2 border-ink">{children}</thead>
 }
 
-function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
-  return (
-    <tbody
-      data-slot="table-body"
-      className={cn("[&_tr:last-child]:border-0", className)}
-      {...props}
-    />
-  )
+export function TBody({ children }: { children: ReactNode }) {
+  return <tbody>{children}</tbody>
 }
 
-function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
-  return (
-    <tfoot
-      data-slot="table-footer"
-      className={cn(
-        "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+export function TR({
+  children,
+  onClick,
+  className,
+}: {
+  children: ReactNode
+  onClick?: () => void
+  className?: string
+}) {
   return (
     <tr
-      data-slot="table-row"
+      onClick={onClick}
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
-        className
+        'border-b border-rule last:border-b-0',
+        onClick && 'cursor-pointer hover:bg-rule/40',
+        className,
       )}
-      {...props}
-    />
+    >
+      {children}
+    </tr>
   )
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+export function TH({
+  children,
+  className,
+  align = 'left',
+}: {
+  children?: ReactNode
+  className?: string
+  align?: 'left' | 'right'
+}) {
   return (
     <th
-      data-slot="table-head"
+      scope="col"
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
-        className
+        'px-3 py-2.5 font-mono text-[9px] font-bold tracking-[0.12em] whitespace-nowrap uppercase text-ink',
+        align === 'right' && 'text-right',
+        className,
       )}
-      {...props}
-    />
+    >
+      {children}
+    </th>
   )
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+export function TD({
+  children,
+  className,
+  align = 'left',
+}: {
+  children?: ReactNode
+  className?: string
+  align?: 'left' | 'right'
+}) {
   return (
     <td
-      data-slot="table-cell"
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
-        className
+        'px-3 py-3 font-mono text-[10px] tracking-[0.04em] text-ink-soft',
+        align === 'right' && 'text-right',
+        className,
       )}
-      {...props}
-    />
+    >
+      {children}
+    </td>
   )
-}
-
-function TableCaption({
-  className,
-  ...props
-}: React.ComponentProps<"caption">) {
-  return (
-    <caption
-      data-slot="table-caption"
-      className={cn("mt-4 text-sm text-muted-foreground", className)}
-      {...props}
-    />
-  )
-}
-
-export {
-  Table,
-  TableHeader,
-  TableBody,
-  TableFooter,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableCaption,
 }

@@ -1,60 +1,53 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { interviewRoundsApi } from '@/features/interviews/api'
-import { interviewRoundKeys } from '@/features/interviews/query-keys'
-import type { InterviewRoundInput } from '@/features/interviews/types'
+import { queryKeys } from '@/api/query-keys'
+import type { InterviewRoundCreateRequest, InterviewRoundUpdateRequest, Uuid } from '@/api/types'
+import * as interviewsApi from './api'
 
-export function useInterviewRoundsQuery(applicationId: string | undefined) {
+export function useInterviewRounds(applicationId: Uuid | null) {
   return useQuery({
-    queryKey: interviewRoundKeys.list(applicationId ?? ''),
-    queryFn: () => interviewRoundsApi.list(applicationId!),
-    enabled: applicationId !== undefined,
+    queryKey: queryKeys.interviews.byApplication(applicationId ?? ''),
+    queryFn: () => interviewsApi.listInterviewRounds(applicationId!),
+    enabled: Boolean(applicationId),
   })
 }
 
-// No optimistic step for any of these three — rounds are a low-frequency,
-// form-driven list (not something the UI needs to feel instant for), so a
-// plain invalidate-on-success keeps this simple.
-
-export function useCreateInterviewRoundMutation(applicationId: string) {
+/** Rounds are always read through their application's list. */
+function useRoundsInvalidator(applicationId: Uuid) {
   const queryClient = useQueryClient()
+  return () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.interviews.byApplication(applicationId) })
+}
 
+export function useCreateInterviewRound(applicationId: Uuid) {
+  const invalidate = useRoundsInvalidator(applicationId)
   return useMutation({
-    mutationFn: (input: InterviewRoundInput) => interviewRoundsApi.create(applicationId, input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: interviewRoundKeys.list(applicationId) })
-    },
+    mutationFn: (body: InterviewRoundCreateRequest) =>
+      interviewsApi.createInterviewRound(applicationId, body),
+    onSuccess: () => void invalidate(),
   })
 }
 
-export function useUpdateInterviewRoundMutation(applicationId: string) {
-  const queryClient = useQueryClient()
-
+export function useUpdateInterviewRound(applicationId: Uuid) {
+  const invalidate = useRoundsInvalidator(applicationId)
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: InterviewRoundInput }) => interviewRoundsApi.update(id, input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: interviewRoundKeys.list(applicationId) })
-    },
+    mutationFn: ({ id, body }: { id: Uuid; body: InterviewRoundUpdateRequest }) =>
+      interviewsApi.updateInterviewRound(id, body),
+    onSuccess: () => void invalidate(),
   })
 }
 
-export function useDeleteInterviewRoundMutation(applicationId: string) {
-  const queryClient = useQueryClient()
-
+export function useDeleteInterviewRound(applicationId: Uuid) {
+  const invalidate = useRoundsInvalidator(applicationId)
   return useMutation({
-    mutationFn: (id: string) => interviewRoundsApi.remove(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: interviewRoundKeys.list(applicationId) })
-    },
+    mutationFn: (id: Uuid) => interviewsApi.deleteInterviewRound(id),
+    onSuccess: () => void invalidate(),
   })
 }
 
-export function useCalendarSyncMutation(applicationId: string) {
-  const queryClient = useQueryClient()
-
+export function useSyncInterviewToCalendar(applicationId: Uuid) {
+  const invalidate = useRoundsInvalidator(applicationId)
   return useMutation({
-    mutationFn: (id: string) => interviewRoundsApi.calendarSync(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: interviewRoundKeys.list(applicationId) })
-    },
+    mutationFn: (id: Uuid) => interviewsApi.syncInterviewToCalendar(id),
+    onSuccess: () => void invalidate(),
   })
 }
