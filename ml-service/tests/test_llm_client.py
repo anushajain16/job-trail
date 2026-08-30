@@ -32,3 +32,20 @@ async def test_stub_confidence_is_capped_and_never_high():
     )
 
     assert 0.0 < extraction.confidence <= 0.6
+
+
+async def test_stub_extracts_company_from_scraper_hint_line():
+    # scraper.fetch_visible_text prepends exactly this line when it finds a
+    # JobPosting JSON-LD block or og:site_name tag.
+    extraction = await StubLLMClient().extract("Company: Acme Corp\n\nSenior Backend Engineer\nFull-time, remote.")
+
+    assert extraction.company == "Acme Corp"
+    assert extraction.role == "Senior Backend Engineer"  # the company hint line itself isn't mistaken for the role
+
+
+async def test_stub_leaves_company_null_without_a_hint_line():
+    # Pasted JD text (no scrape step) never has the hint line, and a
+    # "Company:" mention isn't trusted unless it's the very first line.
+    extraction = await StubLLMClient().extract("Senior Backend Engineer\nCompany: definitely not this one")
+
+    assert extraction.company is None
