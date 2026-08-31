@@ -70,11 +70,14 @@ export function ApplicationDrawer({ applicationId, onClose, sections }: Applicat
 
   const handleDelete = async () => {
     if (!application) return
+    const id = application.id
+    // Close first: while the drawer is open its detail/history queries are
+    // live observers, and they would refetch a row that is being deleted.
+    setConfirmingDelete(false)
+    onClose()
     try {
-      await remove.mutateAsync(application.id)
+      await remove.mutateAsync(id)
       notify('Line removed from the network.', 'success')
-      setConfirmingDelete(false)
-      onClose()
     } catch (caught) {
       notifyError(caught)
     }

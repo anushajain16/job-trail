@@ -4,13 +4,21 @@ import { Dialog } from '@/components/ui/dialog'
 import { Field, FieldRow, Input, Textarea } from '@/components/ui/field'
 import { FormError } from '@/components/ui/feedback'
 import { useToast } from '@/components/ui/toast'
-import { toDateTimeInputValue } from '@/lib/format'
+import { splitDateTime, toIsoInstant } from '@/lib/format'
 import type { InterviewRoundResponse, Uuid } from '@/api/types'
 import { useCreateInterviewRound, useUpdateInterviewRound } from './hooks'
 
 interface Values {
   roundType: string
-  scheduledAt: string
+  /**
+   * Split into date + time on purpose. `<input type="datetime-local">`
+   * reports an empty string for a *partial* entry — a date with no time
+   * reads exactly like a blank field — so a half-filled schedule silently
+   * saved as "unscheduled", and unscheduled rounds cannot sync to Google
+   * Calendar.
+   */
+  scheduledDate: string
+  scheduledTime: string
   interviewerName: string
   questionsAsked: string
   notes: string
@@ -19,7 +27,8 @@ interface Values {
 
 const EMPTY: Values = {
   roundType: '',
-  scheduledAt: '',
+  scheduledDate: '',
+  scheduledTime: '',
   interviewerName: '',
   questionsAsked: '',
   notes: '',
@@ -30,7 +39,7 @@ function toValues(round?: InterviewRoundResponse | null): Values {
   if (!round) return EMPTY
   return {
     roundType: round.roundType,
-    scheduledAt: toDateTimeInputValue(round.scheduledAt),
+    ...splitDateTime(round.scheduledAt),
     interviewerName: round.interviewerName ?? '',
     questionsAsked: round.questionsAsked ?? '',
     notes: round.notes ?? '',
@@ -78,14 +87,18 @@ export function InterviewFormDialog({ open, onClose, applicationId, round }: Int
     else if (values.roundType.length > 100) nextErrors.roundType = 'Max 100 characters.'
     if (values.interviewerName.length > 255) nextErrors.interviewerName = 'Max 255 characters.'
     if (values.notes.length > 5000) nextErrors.notes = 'Max 5000 characters.'
+    if (values.scheduledTime && !values.scheduledDate) {
+      nextErrors.scheduledDate = 'Pick a date to go with that time.'
+    }
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
     const text = (value: string) => (value.trim() ? value.trim() : null)
     const body = {
       roundType: values.roundType.trim(),
-      // `datetime-local` is wall-clock; the API stores an instant.
-      scheduledAt: values.scheduledAt ? new Date(values.scheduledAt).toISOString() : null,
+      // Local wall-clock in, instant out. A date with no time defaults to
+      // 09:00 rather than dropping the schedule entirely.
+      scheduledAt: toIsoInstant(values.scheduledDate, values.scheduledTime),
       interviewerName: text(values.interviewerName),
       questionsAsked: text(values.questionsAsked),
       notes: text(values.notes),
@@ -140,16 +153,34 @@ export function InterviewFormDialog({ open, onClose, applicationId, round }: Int
               />
             )}
           </Field>
-          <Field label="Scheduled at" hint="Used for calendar sync">
+          <Field
+            label="Scheduled date"
+            error={errors.scheduledDate}
+            hint="Required to sync this round to Google Calendar"
+          >
             {(props) => (
               <Input
                 {...props}
-                type="datetime-local"
-                value={values.scheduledAt}
-                onChange={(event) => set('scheduledAt', event.target.value)}
+                type="date"
+                value={values.scheduledDate}
+                onChange={(event) => set('scheduledDate', event.target.value)}
               />
             )}
           </Field>
+        </FieldRow>
+
+        <FieldRow>
+          <Field label="Start time" hint={values.scheduledDate && !values.scheduledTime ? 'Defaults to 09:00' : undefined}>
+            {(props) => (
+              <Input
+                {...props}
+                type="time"
+                value={values.scheduledTime}
+                onChange={(event) => set('scheduledTime', event.target.value)}
+              />
+            )}
+          </Field>
+          <span />
         </FieldRow>
 
         <Field label="Interviewer" error={errors.interviewerName}>

@@ -72,22 +72,25 @@ function RoundCard({
       <RoundNote label="NOTES" body={round.notes} />
       <RoundNote label="REFLECTION" body={round.reflection} />
 
-      <div className="flex flex-wrap gap-2 border-t border-rule pt-3">
-        <Button
-          size="sm"
-          loading={sync.isPending}
-          disabled={!round.scheduledAt}
-          onClick={runSync}
-          title={round.scheduledAt ? undefined : 'Set a scheduled time first'}
-        >
-          {synced ? 'Update calendar' : 'Add to calendar'}
-        </Button>
-        <Button size="sm" onClick={onEdit}>
-          Edit
-        </Button>
-        <Button size="sm" variant="danger" onClick={onDelete}>
-          Delete
-        </Button>
+      <div className="flex flex-col gap-2 border-t border-rule pt-3">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" loading={sync.isPending} disabled={!round.scheduledAt} onClick={runSync}>
+            {synced ? 'Update calendar' : 'Add to calendar'}
+          </Button>
+          <Button size="sm" onClick={onEdit}>
+            Edit
+          </Button>
+          <Button size="sm" variant="danger" onClick={onDelete}>
+            Delete
+          </Button>
+        </div>
+        {/* The backend refuses to sync a round with no time, so say why the
+            button is dead rather than leaving it to a hover title. */}
+        {!round.scheduledAt && (
+          <p className="font-mono text-[9px] leading-relaxed tracking-[0.06em] text-muted">
+            Add a scheduled time to this round (Edit → Scheduled at) to sync it to your calendar.
+          </p>
+        )}
       </div>
     </Panel>
   )

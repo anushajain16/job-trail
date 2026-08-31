@@ -73,10 +73,20 @@ export function useUpdateApplication() {
 }
 
 export function useDeleteApplication() {
+  const queryClient = useQueryClient()
   const invalidate = useApplicationInvalidator()
   return useMutation({
     mutationFn: (id: Uuid) => applicationsApi.deleteApplication(id),
-    onSuccess: () => invalidate(),
+    onSuccess: (_result, id) => {
+      // Drop the deleted record's own caches before the list invalidation
+      // below: `applications.all` is a key *prefix*, so invalidating it
+      // would otherwise refetch this application's detail and history and
+      // get two 404s for a row that no longer exists.
+      queryClient.removeQueries({ queryKey: queryKeys.applications.detail(id) })
+      queryClient.removeQueries({ queryKey: queryKeys.applications.history(id) })
+      queryClient.removeQueries({ queryKey: queryKeys.interviews.byApplication(id) })
+      invalidate()
+    },
   })
 }
 

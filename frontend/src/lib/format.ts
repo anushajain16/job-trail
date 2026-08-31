@@ -37,6 +37,27 @@ export function toDateInputValue(value: string | null | undefined): string {
   return value.slice(0, 10)
 }
 
+/** Split an instant into the `<input type="date">` / `type="time"` pair. */
+export function splitDateTime(value: string | null | undefined): {
+  scheduledDate: string
+  scheduledTime: string
+} {
+  const local = toDateTimeInputValue(value)
+  if (!local) return { scheduledDate: '', scheduledTime: '' }
+  const [date, time] = local.split('T')
+  return { scheduledDate: date, scheduledTime: time }
+}
+
+/**
+ * Combine a local date and time into an ISO instant for the API. No date
+ * means genuinely unscheduled; a date without a time takes 09:00 rather
+ * than silently discarding the date the user picked.
+ */
+export function toIsoInstant(date: string, time: string): string | null {
+  if (!date) return null
+  return new Date(`${date}T${time || '09:00'}`).toISOString()
+}
+
 /** ISO local datetime (`2026-03-14T09:30`) for `<input type="datetime-local">`. */
 export function toDateTimeInputValue(value: string | null | undefined): string {
   if (!value) return ''
